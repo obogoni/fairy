@@ -1,0 +1,53 @@
+{
+  "version": 2,
+  "skills": {
+    "tlc-discover": {
+      "name": "tlc-discover",
+      "source": "local",
+      "contentHash": "e76c2dc3b32297bb54aaf511266f96273fecd94dbdc9f18d2fcc93be5c250748",
+      "installedAt": "2026-11-22T12:36:36.365Z",
+      "updatedAt": "2026-11-22T12:36:36.365Z",
+      "agents": [
+        "claude-code"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "tlc-plan": {
+      "name": "tlc-plan",
+      "source": "local",
+      "contentHash": "7b3deced549d6cd3b812ed675760c69027166b6ce5e9b293b073f1570b747152",
+      "installedAt": "2026-11-22T12:36:36.373Z",
+      "updatedAt": "2026-11-22T12:36:36.373Z",
+      "agents": [
+        "claude-code"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "tlc-implement": {
+      "name": "tlc-implement",
+      "source": "local",
+      "contentHash": "28efe469462e37cbf1ff3c64a08068e507f16ab07251529fc2dc134a53b7d5f0",
+      "installedAt": "2026-11-22T12:36:36.384Z",
+      "updatedAt": "2026-11-22T12:36:36.384Z",
+      "agents": [
+        "claude-code"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "the-judge": {
+      "name": "the-judge",
+      "source": "local",
+      "contentHash": "05526209052f6592ad98476e8f59e9ffa2a24e803e10a90ceac659476b509403",
+      "installedAt": "2026-11-22T12:36:36.388Z",
+      "updatedAt": "2026-11-22T12:36:36.388Z",
+      "agents": [
+        "claude-code"
+      ],
+      "method": "copy",
+      "global": false
+    }
+  }
+}
