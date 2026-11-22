@@ -7,3 +7,4 @@ Use these definitions for creating tickets, if no type fits your scenario, bring
 - Spike [spike]: a session to test something and gain information to back up future decisions. May result in code, maybe not.
 - Risk [risk]: something found during development that needs to be fixed to improve resilience, security, performance, etc.
 - Bug [bug]: plain old bug registered just so we don't leave it behind.
+- Go-live [golive]: a checklist of the work outside feature slices that must be done before real patient data is used (legal, privacy, operations). The human closes it once every item is checked.
