@@ -154,7 +154,7 @@ erDiagram
 
 Workers with Cloudflare's SQLite database in the EU jurisdiction, for about zero cost.
 
-- **Why not now:** the project owner wants to learn Postgres, which is one of the reasons this project exists.
+- **Why not now:** the project owner wants to learn Postgres, one of the reasons this project exists.
 - **When it wins:** cost outweighs that learning.
 - **What the chosen Postgres design does not survive:** a workplace without signal, which needs sync and conflict rules; several people in one tenant, which splits identity from tenant; a rule that processing, and not only storage, stays in Brazil.
 
@@ -183,11 +183,13 @@ Hard to reverse. Slices cite them by code.
 
 ### D2 — Postgres isolates tenants
 
-**Rule.** A query made for one tenant cannot read or write another's rows, even if the query forgets to filter. A reference cannot cross tenants either.
+**Rule.** Tenants share one database and one set of tables, separated by Postgres row-level security. A query made for one tenant cannot read or write another's rows, even if the query forgets to filter. A reference cannot cross tenants either.
 
 **Consequence.** Tenant proves this with two tenants against real Postgres, and every slice that adds a table extends the proof.
 
 **Careful.** Do not follow Neon's Workers guide for the app's role: roles made in its console bypass row security. Table owners bypass it unless forced, and foreign-key checks always do. Connections are pooled, so tenant context must end with the transaction. Work done before a tenant is known is limited to three narrow operations: find a session, find a subject, accept one pending invitation. The app's role cannot list or create invitations. The owner's admin command uses a separate role.
+
+**Alternative.** A database per tenant wins if a tenant needs its own restore or a contract requires physical separation.
 
 ### D3 — Portable Postgres in São Paulo
 
