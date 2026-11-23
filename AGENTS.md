@@ -26,3 +26,4 @@ Every spec and implementation follows these:
 - [Tests and CI gates](docs/conventions/tests-and-ci.md)
 - [Environments and secrets](docs/conventions/environments-and-secrets.md)
 - [Logging](docs/conventions/logging.md)
+- [Observability: metrics, dashboards and alerts](docs/conventions/observability.md)
