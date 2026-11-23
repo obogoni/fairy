@@ -24,3 +24,4 @@ Every spec and implementation follows these:
 - [Data access and tenant context](docs/conventions/data-access.md)
 - [Identifiers and migrations](docs/conventions/migrations-and-ids.md)
 - [Tests and CI gates](docs/conventions/tests-and-ci.md)
+- [Environments and secrets](docs/conventions/environments-and-secrets.md)
