@@ -28,3 +28,4 @@ Every spec and implementation follows these:
 - [Logging](docs/conventions/logging.md)
 - [Observability: metrics, dashboards and alerts](docs/conventions/observability.md)
 - [Server and deploys](docs/conventions/server.md)
+- [Cloudflare](docs/conventions/cloudflare.md)

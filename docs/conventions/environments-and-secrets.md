@@ -31,6 +31,8 @@ Decided 2026-11-23 in spike #2.
 | `GOOGLE_ISSUER`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | sign-in | everywhere; a mock issuer in `test` |
 | `TUNNEL_TOKEN` | `cloudflared`, not the app | the VM only |
 | `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET` | the deploy, provision and rollback workflows, to SSH through the Tunnel (server.md) | CI only |
+| `CLOUDFLARE_API_TOKEN` | Terraform (cloudflare.md) | CI only |
+| `TF_STATE_R2_ACCESS_KEY_ID`, `TF_STATE_R2_SECRET_ACCESS_KEY` | Terraform state in R2 | CI; the owner's laptop for debugging |
 | `GRAFANA_CLOUD_TOKEN` and endpoints | Alloy, not the app; write-only scopes (observability.md) | the VM only |
 
 Connections to Neon use TLS with certificate verification.
