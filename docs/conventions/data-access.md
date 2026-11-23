@@ -4,14 +4,16 @@ Decided 2026-11-23 in spike #2.
 
 ## Tools
 
-- Drizzle ORM on the `node-postgres` (`pg`) driver, with `casing: 'snake_case'`. Raw SQL through Drizzle's `sql` tag is fine wherever it reads better.
-- `src/server/db/schema.ts` describes the tables for Drizzle's types. It mirrors the migrations and never generates them: **do not run `drizzle-kit generate` or `drizzle-kit push`**. Migrations are hand-written SQL (migrations-and-ids.md).
+- Drizzle ORM on the `node-postgres` (`pg`) driver. Raw SQL through Drizzle's `sql` tag is fine wherever it reads better.
+- Database first: SQL migrations define the schema (migrations-and-ids.md). [`drizzle-kit pull`](https://orm.drizzle.team/docs/drizzle-kit-pull) reads the migrated database and generates the Drizzle schema into `src/server/db/generated/`, with `introspect.casing: 'camel'` so code uses camelCase.
+- Generated files are committed and never edited by hand. **Do not run `drizzle-kit generate`, `migrate` or `push`**: only dbmate changes the schema.
+- `pnpm db:migrate` runs dbmate. `pnpm db:pull` runs `drizzle-kit pull` and formats the output. After writing a migration, run both and commit the migration and the regenerated schema together.
 
 ## Roles (D2)
 
 | Role | Used by | Rights |
 |---|---|---|
-| owner | `scripts/migrate.ts` | owns the tables; used only to migrate |
+| owner | dbmate | owns the tables; used only to migrate |
 | `fairy_app` | the app | not the owner, no `BYPASSRLS`; created in a migration, never in Neon's console |
 | `fairy_admin` | the owner's admin command | manages invitations |
 
@@ -35,3 +37,7 @@ export function withTenant<T>(tenantId: string, fn: (tx: Tx) => Promise<T>) {
 ## Pool
 
 The app owns one `pg.Pool`, with a small `max` and a short `idleTimeoutMillis` so idle connections close and Neon can sleep (D3). Spike #3 sets the values.
+
+## To confirm in the hello-world
+
+Which files `drizzle-kit pull` writes besides `schema.ts` and `relations.ts`, such as snapshots and a SQL file, and which of them are committed.

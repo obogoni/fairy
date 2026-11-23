@@ -15,14 +15,14 @@ src/
   server/
     app.ts              builds the Fastify app; tests import this
     main.ts             starts it
-    db/                 pool, Drizzle instance, withTenant, schema.ts
+    db/                 pool, Drizzle instance, withTenant; generated/ from drizzle-kit pull
     features/<slice>/   routes and queries of one slice
   client/
     main.tsx
     features/<slice>/   screens and hooks of one slice
   shared/               Zod schemas and types used by both sides
-db/migrations/          NNNN_name.sql, see migrations-and-ids.md
-scripts/                migrate.ts, admin commands
+db/migrations/          NNNN_name.sql applied by dbmate, see migrations-and-ids.md
+scripts/                admin commands
 tests/e2e/              Playwright
 ```
 

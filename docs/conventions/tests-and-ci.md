@@ -22,6 +22,8 @@ Every pull request runs these, and all of them must pass before merge:
 1. `pnpm install --frozen-lockfile`
 2. Prettier check and ESLint
 3. `tsc --noEmit`
-4. Unit and integration tests, with Postgres as a CI service container
-5. Build of the client and the server
-6. Playwright against the build, at both widths
+4. Migrations untouched: no file under `db/migrations/` that exists on `main` is modified or deleted
+5. Unit and integration tests, with Postgres as a CI service container
+6. Schema in sync: `pnpm db:migrate` on the fresh database, then `pnpm db:pull`, then `git diff --exit-code src/server/db/generated`
+7. Build of the client and the server
+8. Playwright against the build, at both widths

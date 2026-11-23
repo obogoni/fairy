@@ -17,15 +17,17 @@ Decided 2026-11-23 in spike #2.
 
 ## Migrations
 
-- Plain SQL files in `db/migrations/`, numbered in sequence: `0001_create_tenants.sql`, `0002_...`.
-- They only move forward. A shipped file is never edited: fix it with a new one.
-- `scripts/migrate.ts` connects as the owner, takes an advisory lock, and applies each pending file in its own transaction. It records the file name and its SHA-256 in `schema_migrations`, and refuses to run if an applied file has changed.
-- Roles, grants and RLS policies live in migrations like any other schema change.
+The database is the source of truth. Migrations are hand-written SQL, and the Drizzle schema is generated from the migrated database (data-access.md).
 
-## Drift guard
+- [dbmate](https://github.com/amacneil/dbmate), installed from npm, applies the files in `db/migrations/`. Files are numbered in sequence: `0001_create_tenants.sql`, `0002_...`. dbmate records the number in `schema_migrations`.
+- Each file has a `-- migrate:up` section and an empty `-- migrate:down` section. Migrations only move forward: to fix one, add a new file.
+- dbmate runs each file in a transaction and always runs with `--strict`, so an out-of-order file fails. It runs with `--no-dump-schema`, because the pulled Drizzle schema already shows the current shape.
+- It connects as the owner role. Roles, grants and RLS policies live in migrations like any other schema change.
+- dbmate records only the number, so it can't tell that an applied file changed. A CI gate rejects any pull request that modifies or deletes an existing migration (tests-and-ci.md).
+
+## Schema checks
 
 An integration test applies every migration to a fresh Postgres and checks:
 
-1. Each Drizzle table in `schema.ts` matches `information_schema`: columns, types and nullability.
-2. Every table with a `tenant_id` has RLS enabled and forced (`pg_class.relrowsecurity` and `relforcerowsecurity`).
-3. `fairy_app` owns no table and lacks `BYPASSRLS`.
+1. Every table with a `tenant_id` has RLS enabled and forced (`pg_class.relrowsecurity` and `relforcerowsecurity`).
+2. `fairy_app` owns no table and lacks `BYPASSRLS`.
