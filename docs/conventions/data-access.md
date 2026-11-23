@@ -19,16 +19,23 @@ Decided 2026-11-23 in spike #2.
 
 ## Tenant context
 
-Every query on tenant data runs inside `withTenant`:
+Every query on tenant data runs inside `TenantDb.withTenant`. `TenantDb` is a singleton provider from `DbModule`:
 
 ```ts
-export function withTenant<T>(tenantId: string, fn: (tx: Tx) => Promise<T>) {
-  return db.transaction(async (tx) => {
-    await tx.execute(sql`select set_config('app.tenant_id', ${tenantId}, true)`);
-    return fn(tx);
-  });
+@Injectable()
+export class TenantDb {
+  constructor(@Inject(DRIZZLE) private readonly db: Db) {}
+
+  withTenant<T>(tenantId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+    return this.db.transaction(async (tx) => {
+      await tx.execute(sql`select set_config('app.tenant_id', ${tenantId}, true)`);
+      return fn(tx);
+    });
+  }
 }
 ```
+
+The controller takes the tenant id from `@TenantId()` and passes it to the service as an argument. The tenant is passed explicitly, never pulled from request-scoped providers or CLS, so every place that touches tenant data says so in its signature.
 
 - `true` makes the setting local to the transaction, so it ends with the transaction and never leaks through the pool (D2).
 - Policies read `current_setting('app.tenant_id', true)::uuid`. With no tenant set, the value is null and the query sees no rows.

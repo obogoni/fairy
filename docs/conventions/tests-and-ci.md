@@ -7,8 +7,11 @@ Decided 2026-11-23 in spike #2.
 | Level | Runner | Touches | Lives in |
 |---|---|---|---|
 | Unit | Vitest | no I/O | `*.test.ts` next to the code |
-| Integration | Vitest | real Postgres in Docker, migrated from scratch; the Fastify app through `app.inject()` | `*.int.test.ts` next to the code |
+| Integration | Vitest | real Postgres in Docker, migrated from scratch; the Nest app from `Test.createTestingModule`, called through `supertest` | `*.int.test.ts` next to the code |
 | End to end | Playwright | the built app and real Postgres | `tests/e2e/` |
+
+- Vitest compiles with esbuild, which doesn't emit decorator metadata, so Nest's dependency injection breaks. Vitest uses `unplugin-swc` instead, following the SWC recipe in Nest's docs.
+- Unit tests build services with `Test.createTestingModule` and override providers only for things outside our control, such as Google. Never the database.
 
 - Mocking the database is not allowed. Isolation is a Postgres property, so it is tested on Postgres.
 - **Isolation proof (D2).** Integration tests run as `fairy_app` with two tenants. For every tenant-owned table they assert that tenant A cannot read, update or delete tenant B's rows, or reference them, with or without a `where tenant_id`. Each slice that adds a table extends this.
