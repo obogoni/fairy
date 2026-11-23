@@ -49,7 +49,18 @@ An integration test runs requests carrying canary values (a fake patient name, p
 
 No analytics and no third-party error reporting in the browser (D4). Month 6 (observability) decides how client errors are reported, if at all.
 
+## Retention
+
+Logs stay on the VM, in journald, with a size cap. That adds no dependency and costs nothing: at one dentist's volume, six months of logs is in the tens of MB.
+
+What this gives up:
+
+- Rebuilding the VM loses its logs (D9).
+- Someone who takes over the VM can erase them.
+- Nothing watches them: no alerts, and reading them means `journalctl` over SSH.
+
+The observability work before go-live (PDI month 6) revisits this together with alerts. Options known today: a free tier of a log service (a new foreign subprocessor for #11), or a nightly export to Cloudflare R2 (already a vendor).
+
 ## Open
 
-- **Retention.** journald keeps logs on the VM with a size cap. Where logs go off the VM, and for how long, is decided with observability before go-live.
 - **IP addresses and the Marco Civil.** It may require application providers to keep access records (IP, date and time) for six months. Whether that applies to Fairy, and how it sits with LGPD minimisation, goes to the go-live checklist (#11).
