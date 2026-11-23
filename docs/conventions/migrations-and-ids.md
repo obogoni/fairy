@@ -22,6 +22,7 @@ The database is the source of truth. Migrations are hand-written SQL, and the Dr
 - [dbmate](https://github.com/amacneil/dbmate), installed from npm, applies the files in `db/migrations/`. Files are numbered in sequence: `0001_create_tenants.sql`, `0002_...`. dbmate records the number in `schema_migrations`.
 - Each file has a `-- migrate:up` section and an empty `-- migrate:down` section. Migrations only move forward: to fix one, add a new file.
 - dbmate runs each file in a transaction and always runs with `--strict`, so an out-of-order file fails. It runs with `--no-dump-schema`, because the pulled Drizzle schema already shows the current shape.
+- **Expand/contract.** The previous release must still run on the new schema, because deploys switch between two running versions and a rollback switches the code back without undoing migrations. A migration only adds things: tables, nullable columns or columns with defaults, indexes, policies. Removing, renaming or tightening (`not null` on an existing column, a narrower type) happens in a later release, once no deployed version uses the old shape. A rename is three steps: add the new column and write both, backfill and read the new one, then drop the old one.
 - It connects as the owner role. Roles, grants and RLS policies live in migrations like any other schema change.
 - dbmate records only the number, so it can't tell that an applied file changed. A CI gate rejects any pull request that modifies or deletes an existing migration (tests-and-ci.md).
 

@@ -10,7 +10,7 @@ Decided 2026-11-23 in spike #2.
 | `test` | Vitest and Playwright, locally and in CI | Postgres in Docker; a service container in CI | fake, generated per run |
 | `production` | the VM (D9) | Neon in São Paulo (D3) | fake until go-live, real after |
 
-- There is no staging. CI, including Playwright at both widths, is the gate before production. The go-live ticket (#11) decides whether real data needs one.
+- There is no staging. CI, including Playwright at both widths, is the gate before production, and blue-green deploys make rollback fast. Discovery #18 revisits staging and previews per PR after go-live.
 - Before go-live, production runs on Neon Free with fake data. Go-live starts on a clean paid database (D3), so no fake row is ever mixed with real ones.
 - Real data never leaves production. No dumps, no Neon branches from production, and no copying rows to debug. Every other environment uses generated data (D4).
 - `local` and `test` never connect to Neon.
