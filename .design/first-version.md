@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | confirmed by obogoni (project owner), 2026-11-22: build, scope, journey, Postgres and order. Proposed, for review here: provider plan, D4, D5 and slice defaults |
+| **Status** | confirmed by obogoni (project owner), 2026-11-22: build, scope, journey, Postgres and order. Proposed, for review here: provider plan, D4, D5, D9, D10 and slice defaults |
 | **Ready to plan?** | None yet. Tenant waits on the Conventions spike, which sets engineering rules. The other four also wait on Agenda screens, the design session |
 | **Blocks go-live** | All five slices and every go-live row in Open |
 | **Review** | Day 30 after the pilot dentist's first real use: obogoni (project owner) and the pilot dentist |
@@ -17,6 +17,8 @@ The pilot dentist works in several places and keeps appointments in a paper note
 2. One week shows every workplace, with no switching.
 3. Booking is as quick as paper: overlaps warn and never refuse, and a retry never duplicates.
 4. Postgres in São Paulo enforces the separation between tenants.
+5. The app runs on one fixed-price server in São Paulo, reachable only through Cloudflare.
+6. It is a web app, designed for the phone first and built to work well on a desktop too.
 
 **What is expensive to get wrong:** tenant isolation. The records are health data, the usual setup guides switch isolation off silently, and retrofitting it means changing every table and query.
 
@@ -82,14 +84,14 @@ If the bet fails, the review returns to why the notebook wins before any feature
 
 ```mermaid
 flowchart LR
-  P[Dentist's phone browser] -->|HTTPS| W[App on Cloudflare Workers]
+  P[Dentist's browser, phone first] -->|HTTPS| CF[Cloudflare proxy, caching off]
+  CF -->|tunnel| W[Node app on a VM, São Paulo]
   P -->|signs in| G
   W -->|identity| G[Google sign-in]
-  W -->|transaction with tenant set| H[Hyperdrive pool, caching off]
-  H -->|restricted role| D[(Postgres, São Paulo)]
+  W -->|transaction with tenant set, restricted role| D[(Postgres, São Paulo)]
 ```
 
-The phone reads and writes data only through the app. Google proves identity. Hyperdrive is Cloudflare's connection pool. Postgres returns only the rows of the tenant set in that transaction.
+The phone reads and writes data only through the app. Cloudflare filters traffic and reaches the app through a tunnel the app opens, so the server takes no inbound web traffic. Google proves identity. The app keeps its own connection pool. Postgres returns only the rows of the tenant set in that transaction.
 
 ```mermaid
 flowchart LR
@@ -172,6 +174,8 @@ Hard to reverse. Slices cite them by code.
 | D6 | One submission, one appointment | Appointment |
 | D7 | Overlaps are allowed | Appointment, Appointment changes |
 | D8 | Agenda is not the patient record | Appointment changes |
+| D9 | One fixed-price server in São Paulo, behind Cloudflare | Tenant, Agenda |
+| D10 | A web app, phone first, desktop considered | Tenant, Workplace, Appointment, Agenda, Appointment changes |
 
 ### D1 — One dentist per tenant
 
@@ -187,17 +191,17 @@ Hard to reverse. Slices cite them by code.
 
 **Consequence.** Tenant proves this with two tenants against real Postgres, and every slice that adds a table extends the proof.
 
-**Careful.** Do not follow Neon's Workers guide for the app's role: roles made in its console bypass row security. Table owners bypass it unless forced, and foreign-key checks always do. Connections are pooled, so tenant context must end with the transaction. Work done before a tenant is known is limited to three narrow operations: find a session, find a subject, accept one pending invitation. The app's role cannot list or create invitations. The owner's admin command uses a separate role.
+**Careful.** Do not make the app's role in Neon's console: roles made there bypass row security. Table owners bypass it unless forced, and foreign-key checks always do. Connections are pooled, so tenant context must end with the transaction. Work done before a tenant is known is limited to three narrow operations: find a session, find a subject, accept one pending invitation. The app's role cannot list or create invitations. The owner's admin command uses a separate role.
 
 **Alternative.** A database per tenant wins if a tenant needs its own restore or a contract requires physical separation.
 
 ### D3 — Portable Postgres in São Paulo
 
-**Rule.** Data at rest is in São Paulo, in Postgres, with no provider-only features. Reads are never cached by the connection pool.
+**Rule.** Data at rest is in São Paulo, in Postgres, with no provider-only features. Reads are never cached between the database and the phone.
 
 **Consequence.** The Conventions spike provisions Neon Free and Tenant builds on it. Only test accounts and fake data use it. Go-live starts on a clean paid production database with a 7-day restore window. The Cold start spike, run for Agenda, picks its provider.
 
-**Careful.** Hyperdrive caches reads for 60 seconds by default. Neon's paid restore window defaults to 1 day.
+**Careful.** Neon's paid restore window defaults to 1 day. A pool that holds idle connections open may keep Neon from sleeping.
 
 **Alternative.** PlanetScale single node, if sold in São Paulo at the listed US$7 a month, beats Neon compute at 0.25 units above about 264 awake hours a month. Its page contradicts itself on availability.
 
@@ -207,7 +211,7 @@ Hard to reverse. Slices cite them by code.
 
 **Consequence.** Tenant sets up logging and no-store responses. Appointment keeps an unsaved form only until save, sign-out in that browser or the tab closing. After a session ends for any reason, the form stays hidden until the same dentist signs in.
 
-**Careful.** Workers logs request URLs by default.
+**Careful.** Cloudflare caches static file types by default, and web servers and process managers often log request URLs. Responses carry `Cache-Control: no-store` and a Cloudflare cache rule bypasses every non-static path (D9).
 
 ### D5 — Clock time as agreed
 
@@ -235,6 +239,39 @@ Hard to reverse. Slices cite them by code.
 
 **Consequence.** Appointment changes carries that text. Erasure requests follow the manual procedure in the written terms until retention is settled.
 
+### D9 — One fixed-price server in São Paulo, behind Cloudflare
+
+**Rule.** The app is one Node process on a Locaweb Micro VM in Brazil (1 vCPU, 1 GB, R$20 a month at a fixed price). The VM keeps no data and can be rebuilt from the repository. It takes no inbound web traffic: Cloudflare's free proxy reaches it through a Cloudflare Tunnel the VM opens. Postgres stays on Neon (D3).
+
+**Why.** One dentist uses Fairy a few minutes a day, so scaling buys nothing. A fixed price means an attack can take Fairy down but cannot raise the bill. A normal Node runtime and a pool the app owns remove the serverless workarounds: a connection pool service with its own read cache, a CPU limit per request, and a runtime that is not Node.
+
+**Consequence.** The Conventions spike provisions the VM, the tunnel and the cache rule, and the hello-world deploys there. OS updates, restart on reboot and the app's own pool are Fairy's job. The app reads the client address from `CF-Connecting-IP`. The Cold start spike only measures Neon waking up.
+
+**Careful.** Cloudflare decrypts every request, patient names included, so it stays a subprocessor and part of the international transfer. The free plan cannot keep decryption in Brazil. The VM's own public address must stay closed to web traffic, or Cloudflare can be bypassed. The Locaweb datacenter location is to be confirmed at sign-up.
+
+**Alternatives.**
+
+- Cloudflare Workers with Hyperdrive, the previous plan: about US$0 and nothing to patch. Wins if R$20 a month matters more than the workarounds above, and if processing outside Brazil is acceptable.
+- Cloud Run in São Paulo: free at this traffic, Node, no server to patch. Wins if keeping the VM up becomes a burden. Spend has no hard cap, only one instance at most plus a budget alert that switches billing off; cold starts return; and its default address skips Cloudflare unless a paid load balancer is added.
+- Akamai Nanode (US$7) or Lightsail (about US$5, price in São Paulo unconfirmed): win if Locaweb proves unreliable.
+- Postgres on the same VM: wins if Neon's bill outgrows the app's, at the price of owning backups and the rehearsed restore.
+- Oracle Always Free: fine for fake data, not for patients; free accounts can lose their Arm instances.
+
+### D10 — A web app, phone first, desktop considered
+
+**Rule.** Fairy is a web app with no store app. Each screen is designed for the phone first, and also designed and tested on a desktop browser. It can be installed to the home screen, and stores no data on the device.
+
+**Why.** The dentist books on the phone while talking to the patient, so the phone sets the bar. A desktop may be at hand at a workplace, and the week reads better on a wide screen. A store app would add yearly fees, a review before every release and a second build. Offline is out of scope, which removes the main reason to go native.
+
+**Consequence.** The Agenda screens design draws each screen at phone and desktop widths, and the week uses the extra width. The Conventions spike sets test levels that run key flows at both widths. A web app manifest makes Fairy installable. If a service worker is ever added, it may cache only the app's own files, never responses (D4).
+
+**Careful.** The usual installable-app setups cache pages and API responses on the device, which D4 forbids. Desktop is not a second app: one codebase, one set of endpoints, layouts that adapt.
+
+**Alternatives.**
+
+- A store app: wins if offline booking enters scope or the dentist rejects the installed web app.
+- Phone only, desktop left to chance: cheaper, but loses the wide week and breaks the first time she books at a clinic computer.
+
 ## Open
 
 | Item | Where it stands | Blocks | Where |
@@ -248,6 +285,7 @@ Hard to reverse. Slices cite them by code.
 | Paid plan, 7-day window and one rehearsed restore | not done; obogoni | go-live of all slices | [D3](#d3--portable-postgres-in-são-paulo) |
 | Pilot dentist has a Gmail or Google Workspace account | not asked; obogoni | go-live of Tenant | [Tenant](#tenant) |
 | Only writer, signal at every workplace, no blocked times among the notebook's appointments | assumed; obogoni asks the pilot dentist | go-live of Appointment | [Appointment](#appointment) |
+| Does the pilot dentist use a computer at any workplace, and for what? | not asked; obogoni asks the pilot dentist | nothing; it weights desktop work in Agenda screens | [D10](#d10--a-web-app-phone-first-desktop-considered) |
 | Legal review: health-data reading, the stated legal basis, minors, small-agent status, agenda retention, Marco Civil access logs (six months for a for-profit company) | needs a lawyer; obogoni | go-live for any second dentist | [Appointment changes](#appointment-changes) |
 | Why paper wins, and whether appointments are the first problem | assumed; obogoni and the pilot dentist at review | nothing in this version | [Appointment](#appointment) |
 | Does the problem generalize? | no data; obogoni asks about five other dentists | treating Fairy as a product | [Agenda](#agenda) |
@@ -271,7 +309,7 @@ Hard to reverse. Slices cite them by code.
 ### Tenant
 
 > **Delivers:** a deployed app where an invited dentist signs in and can reach only their own tenant.
-> **Status:** blocked by Conventions · **Applies:** D1 (One dentist per tenant), D2 (Postgres isolates tenants), D3 (Portable Postgres in São Paulo), D4 (Patient data stays in the database) · **Depends on:** nothing · **Screens:** sign-in and refusal, plain until designed
+> **Status:** blocked by Conventions · **Applies:** D1 (One dentist per tenant), D2 (Postgres isolates tenants), D3 (Portable Postgres in São Paulo), D4 (Patient data stays in the database), D9 (One fixed-price server in São Paulo, behind Cloudflare), D10 (A web app, phone first, desktop considered) · **Depends on:** nothing · **Screens:** sign-in and refusal, plain until designed
 
 **Behaviour**
 
@@ -345,7 +383,7 @@ sequenceDiagram
 ### Workplace
 
 > **Delivers:** a first workplace in one step, and two settings.
-> **Status:** blocked by Conventions, Agenda screens · **Applies:** D1 (One dentist per tenant), D2 (Postgres isolates tenants), D5 (Clock time as agreed) · **Depends on:** Tenant · **Screens:** first use, settings
+> **Status:** blocked by Conventions, Agenda screens · **Applies:** D1 (One dentist per tenant), D2 (Postgres isolates tenants), D5 (Clock time as agreed), D10 (A web app, phone first, desktop considered) · **Depends on:** Tenant · **Screens:** first use, settings
 
 **Behaviour**
 
@@ -375,7 +413,7 @@ New record `workplaces`. `tenants` gains the two settings.
 ### Appointment
 
 > **Delivers:** booking while talking to the patient.
-> **Status:** blocked by Conventions, Agenda screens · **Applies:** D2 (Postgres isolates tenants), D4 (Patient data stays in the database), D5 (Clock time as agreed), D6 (One submission, one appointment), D7 (Overlaps are allowed) · **Depends on:** Workplace · **Screens:** booking, overlap warning, plain day list
+> **Status:** blocked by Conventions, Agenda screens · **Applies:** D2 (Postgres isolates tenants), D4 (Patient data stays in the database), D5 (Clock time as agreed), D6 (One submission, one appointment), D7 (Overlaps are allowed), D10 (A web app, phone first, desktop considered) · **Depends on:** Workplace · **Screens:** booking, overlap warning, plain day list
 
 **Behaviour**
 
@@ -433,7 +471,7 @@ sequenceDiagram
 ### Agenda
 
 > **Delivers:** where to be next, and the whole week.
-> **Status:** blocked by Conventions, Agenda screens · **Applies:** D2 (Postgres isolates tenants), D3 (Portable Postgres in São Paulo), D4 (Patient data stays in the database), D5 (Clock time as agreed) · **Depends on:** Appointment · **Screens:** today, week
+> **Status:** blocked by Conventions, Agenda screens · **Applies:** D2 (Postgres isolates tenants), D3 (Portable Postgres in São Paulo), D4 (Patient data stays in the database), D5 (Clock time as agreed), D9 (One fixed-price server in São Paulo, behind Cloudflare), D10 (A web app, phone first, desktop considered) · **Depends on:** Appointment · **Screens:** today, week
 
 **Behaviour**
 
@@ -451,18 +489,18 @@ Uses the date-range read from Appointment and adds no endpoint.
 
 **Spike**
 
-- Cold start: after the database has been idle, do a week-sized read and a one-row write each take under one second on a phone on 4G? Does the pool let Neon sleep? Does each stay within the Workers free CPU limit? It adds that read and write, with fake data, to the Conventions hello-world. If speed and sleep both pass, use Neon Launch at its smallest size. If either fails, use the cheaper always-on option actually sold in São Paulo. If only CPU fails, Workers moves to its US$5 plan. It stops after one day.
+- Cold start: after the database has been idle, do a week-sized read and a one-row write each take under one second on a phone on 4G, through Cloudflare? Does the app's pool let Neon sleep? It adds that read and write, with fake data, to the Conventions hello-world. If speed and sleep both pass, use Neon Launch at its smallest size. If either fails, use the cheaper always-on option actually sold in São Paulo. It stops after one day.
 
 **Needs design**
 
-- Agenda screens: sign-in and refusal, first use, settings, today, week, empty and failed loads, booking, overlap, already saved, expired session, failed save, move, correct, cancel and undo, cancelados, faltou with its disclaimer, archive with its warning. The bar is booking as quick as writing a line in the notebook. Drawings are linked from this document.
+- Agenda screens: sign-in and refusal, first use, settings, today, week, empty and failed loads, booking, overlap, already saved, expired session, failed save, move, correct, cancel and undo, cancelados, faltou with its disclaimer, archive with its warning. Each at phone and desktop widths, plus the installed home-screen app (D10). The bar is booking as quick as writing a line in the notebook. Drawings are linked from this document.
 
 ---
 
 ### Appointment changes
 
 > **Delivers:** everything needed to stop using the notebook for appointments.
-> **Status:** blocked by Conventions, Agenda screens · **Applies:** D2 (Postgres isolates tenants), D4 (Patient data stays in the database), D5 (Clock time as agreed), D7 (Overlaps are allowed), D8 (Agenda is not the patient record) · **Depends on:** Agenda · **Screens:** move, cancel, faltou, archive
+> **Status:** blocked by Conventions, Agenda screens · **Applies:** D2 (Postgres isolates tenants), D4 (Patient data stays in the database), D5 (Clock time as agreed), D7 (Overlaps are allowed), D8 (Agenda is not the patient record), D10 (A web app, phone first, desktop considered) · **Depends on:** Agenda · **Screens:** move, cancel, faltou, archive
 
 **Behaviour**
 
@@ -509,8 +547,9 @@ All read on 2026-11-22 unless marked.
 - [Marco Civil, art. 15](https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2014/lei/l12965.htm): who must keep access logs.
 - [ANPD incident regulation](https://www.legisweb.com.br/legislacao/?id=458235): three business days, seen only in search summaries, not read.
 - [Neon plans](https://neon.com/docs/introduction/plans), [regions](https://neon.com/docs/introduction/regions), [roles](https://neon.com/docs/manage/roles), [pooling](https://neon.com/docs/connect/connection-pooling), [scale to zero](https://neon.com/docs/introduction/scale-to-zero) and [Workers guide](https://neon.com/docs/guides/cloudflare-workers): price, restore, region, traps, sleep.
-- [Hyperdrive caching](https://developers.cloudflare.com/hyperdrive/concepts/query-caching/), [pooling](https://developers.cloudflare.com/hyperdrive/concepts/connection-pooling/) and [limits](https://developers.cloudflare.com/hyperdrive/platform/limits/): pool behaviour.
-- [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/) and [logs](https://developers.cloudflare.com/workers/observability/logs/workers-logs/): free limits, URLs in logs.
+- [Hyperdrive caching](https://developers.cloudflare.com/hyperdrive/concepts/query-caching/), [pooling](https://developers.cloudflare.com/hyperdrive/concepts/connection-pooling/) and [limits](https://developers.cloudflare.com/hyperdrive/platform/limits/): pool behaviour, for the Workers alternative.
+- [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/) and [logs](https://developers.cloudflare.com/workers/observability/logs/workers-logs/): free limits, URLs in logs, for the Workers alternative.
+- Read on 2026-11-23 for D9: [Locaweb VM prices](https://www.locaweb.com.br/locaweb-cloud/precos/) (Micro, R$20), [Akamai São Paulo prices](https://www.akamai.com/cloud/pricing/sao-paulo) (US$7), [Fly.io prices](https://fly.io/docs/about/pricing/) (São Paulo multiplier), [Magalu Cloud VM prices](https://magalu.cloud/precos/virtual-machines/), [Oracle Always Free](https://docs.oracle.com/iaas/Content/FreeTier/resourceref.htm), [Cloud Run pricing](https://cloud.google.com/run/pricing) and [locations](https://docs.cloud.google.com/run/docs/locations) (São Paulo is Tier 2). Lightsail and Vultr São Paulo prices came only from third-party listings that disagree. Cloudflare Tunnel, proxy and free-plan limits were not read for this decision; the Conventions spike checks them.
 - [Cloudflare SQLite data location](https://developers.cloudflare.com/d1/configuration/data-location/): no South America, EU jurisdiction available.
 - [Postgres row security](https://www.postgresql.org/docs/current/ddl-rowsecurity.html): who bypasses it.
 - [Google token verification](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token) and [audience rules](https://support.google.com/cloud/answer/15549945): identity rules.
