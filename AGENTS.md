@@ -25,3 +25,4 @@ Every spec and implementation follows these:
 - [Identifiers and migrations](docs/conventions/migrations-and-ids.md)
 - [Tests and CI gates](docs/conventions/tests-and-ci.md)
 - [Environments and secrets](docs/conventions/environments-and-secrets.md)
+- [Logging](docs/conventions/logging.md)
