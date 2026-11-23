@@ -30,6 +30,7 @@ Decided 2026-11-23 in spike #2.
 | `DATABASE_ADMIN_URL` | admin command, as `fairy_admin` | the owner's laptop only |
 | `GOOGLE_ISSUER`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | sign-in | everywhere; a mock issuer in `test` |
 | `TUNNEL_TOKEN` | `cloudflared`, not the app | the VM only |
+| `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET` | the deploy, provision and rollback workflows, to SSH through the Tunnel (server.md) | CI only |
 | `GRAFANA_CLOUD_TOKEN` and endpoints | Alloy, not the app; write-only scopes (observability.md) | the VM only |
 
 Connections to Neon use TLS with certificate verification.
@@ -37,7 +38,7 @@ Connections to Neon use TLS with certificate verification.
 ## Secrets
 
 - **Source of truth:** GitHub Actions secrets, on the `production` environment. Locally, secrets live in `.env`.
-- The VM holds only what the running app, the Tunnel and Alloy need. The deploy job writes them to a root-owned `0600` file that the service manager loads at start. How the deploy job reaches the VM is set in the server convention.
+- The VM holds only what the running app, the Tunnel and Alloy need. The deploy job writes them to a root-owned `0600` file that the service manager loads at start. The deploy job reaches the VM over SSH through the Tunnel (server.md).
 - The owner's database credentials stay in CI. The admin credentials stay on the owner's laptop. A compromised VM can read and write tenant data under RLS, but cannot change the schema, bypass RLS or create invitations.
 - Each environment has its own Google OAuth client. Production's client allows only production's redirect URL.
 - Sessions are random ids stored in the database (Tenant slice), so there is no signing key to manage.

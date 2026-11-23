@@ -27,3 +27,4 @@ Every spec and implementation follows these:
 - [Environments and secrets](docs/conventions/environments-and-secrets.md)
 - [Logging](docs/conventions/logging.md)
 - [Observability: metrics, dashboards and alerts](docs/conventions/observability.md)
+- [Server and deploys](docs/conventions/server.md)
