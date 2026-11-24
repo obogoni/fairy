@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.env
+.specs
+.design
+.claude
+.agents
+docs
+coverage
+test-results
+playwright-report

@@ -66,7 +66,7 @@ New: `tenants`, `greetings`, roles `fairy_app` and `fairy_admin`. One-way constr
 
 | Route | In | Out | Status | Who |
 | --- | --- | --- | --- | --- |
-| `GET /hello` | nothing | `{"message": string}` | `200`; `503` problem `service_unavailable` when the database is unreachable | anyone (temporary, removed by the Tenant slice) |
+| `GET /hello` | nothing | `{"message": string}` | `200`; `503` problem `service_unavailable` when the database is unreachable; `404` problem `not_found` when the demo tenant has no greeting (found mid-build) | anyone (temporary, removed by the Tenant slice) |
 | `GET /health/live` | nothing | `{"status":"ok"}` | `200` | anyone |
 | `GET /health/ready` | nothing | `{"status":"ok"}` or `{"status":"unavailable"}` | `200`; `503` | anyone |
 | `GET /*` (any path no API route matches) | nothing | the SPA's `index.html` | `200` | anyone |
@@ -81,6 +81,11 @@ New: `tenants`, `greetings`, roles `fairy_app` and `fairy_admin`. One-way constr
 | 4. Error contract | `Content-Type: application/problem+json`, body `{"type": "<code>", "title": "<English text>", "status": <int>}`, with optional `"errors": [{"path": string, "code": string}]` for `validation_error`. Codes: `validation_error`, `not_found`, `service_unavailable`, `internal_error`. Clients branch on `type` only | Nest's default `{statusCode, message, error}`: not RFC 9457 (framework.md), and `message` can echo input |
 | 5. Health paths | `/health/live` never touches the database; `/health/ready` runs `select 1` | `/healthz` alone: one endpoint can't both avoid waking Neon and prove the database before a switch |
 | 6. Node and package manager | `.nvmrc` = `26`, `engines.node` = `>=26 <27`, `packageManager` = a pinned `pnpm@<version>` through corepack | Node 24: no longer Active LTS since 2026-10-28, which the convention requires |
+
+| 7. pnpm without corepack (found mid-build) | Node 25+ no longer bundles corepack. pnpm is installed with `npm install --global pnpm@12.23.0` (Dockerfile, local) or `pnpm/action-setup` (CI), which reads the `packageManager` pin from door 6 | corepack: not shipped with Node 26, so door 6's "through corepack" can't hold |
+| 8. TypeScript 6.0 (found mid-build) | `typescript@~6.0` | TypeScript 7 (the Go rewrite, `latest`): `@nestjs/cli@12` depends on `typescript ~6.0`, and decorator metadata is what Nest needs |
+| 9. Generated schema files (found mid-build) | only `schema.ts` and `relations.ts` from `drizzle-kit pull` are committed, through `scripts/db-pull.sh`, formatted with the repo's Prettier config | committing pull's whole output: it adds a randomly named SQL file and a snapshot, so the schema-sync gate could never match |
+| 10. Request logging mounted before static files (found mid-build) | `configureApp` mounts pino-http first with `app.use(httpLogger(...))`; nestjs-pino runs with `useExisting: true` | nestjs-pino's own middleware: it runs after Express static, so asset requests wrote no request line (AC 21) |
 
 - Nothing else in this change is hard to reverse. Dependencies are the ones the ADRs already chose.
 
@@ -184,7 +189,7 @@ The logging convention, proven by canaries.
 | Postgres version locally and in CI | the official `postgres:17` image | widely supported by Neon; the deploy plan confirms the Neon project's version and aligns it | n |
 | Node version | Node 26 (Active LTS since 2026-10-28) via `.nvmrc`; the owner installs it locally (machine has 24) | layout-and-style.md says Active LTS | n |
 | Playwright browsers | Chromium only, for both `devices['Pixel 7']` and `Desktop Chrome` | both projects are Chromium-based; fewer browsers keeps CI minutes down | n |
-| Where tests get `fairy_app` login | integration test setup runs `alter role fairy_app login password '<random per run>'` as the owner, after migrating | keeps passwords out of migrations (door 2) | n |
+| Where tests get `fairy_app` login | test setup runs `alter role fairy_app login password …` as the owner after migrating, with `TEST_FAIRY_APP_PASSWORD` (random per run in CI) or the local compose password, so tests don't break local development | keeps passwords out of migrations (door 2); a random password locally would lock the dev app out of the shared local cluster | n |
 
 **Open questions:** none - all resolved or logged above.
 

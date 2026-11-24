@@ -1,0 +1,127 @@
+# The eight CI gates (tests-and-ci.md). Every pull request must pass all of them.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TEST_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres
+
+jobs:
+  checks:
+    name: Install, format, lint, types, migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: 'Gate 1: install with the frozen lockfile'
+        run: pnpm install --frozen-lockfile
+      - name: 'Gate 2: Prettier and ESLint'
+        run: pnpm format:check && pnpm lint
+      - name: 'Gate 3: type check'
+        run: pnpm typecheck
+      - name: 'Gate 4: existing migrations untouched'
+        if: github.event_name == 'pull_request'
+        run: scripts/check-migrations-untouched.sh "origin/${{ github.base_ref }}"
+
+  test:
+    name: Unit and integration tests, schema in sync
+    needs: checks
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Random password for fairy_app in this run
+        run: echo "TEST_FAIRY_APP_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+      - name: 'Gate 5: unit and integration tests'
+        run: pnpm test:unit --reporter=verbose && pnpm test:int --reporter=verbose
+      - name: 'Gate 6: generated schema in sync'
+        env:
+          DATABASE_OWNER_URL: postgres://postgres:postgres@localhost:5432/fairy_schema?sslmode=disable
+        run: pnpm db:migrate && scripts/check-schema-sync.sh
+
+  build:
+    name: Build
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: 'Gate 7: build client and server'
+        run: pnpm build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
+  e2e:
+    name: End to end, phone and desktop
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Random password for fairy_app in this run
+        run: echo "TEST_FAIRY_APP_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+      - name: 'Gate 8: Playwright at phone and desktop widths'
+        run: pnpm exec playwright test --reporter=list

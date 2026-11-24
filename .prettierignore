@@ -1,0 +1,13 @@
+# Prose and specs are not formatted by Prettier
+*.md
+.specs/
+.design/
+docs/
+.claude/
+.agents/
+pnpm-lock.yaml
+pnpm-workspace.yaml
+dist/
+coverage/
+test-results/
+playwright-report/
