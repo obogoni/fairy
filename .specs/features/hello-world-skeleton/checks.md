@@ -180,8 +180,8 @@ Proof: run unit | ✓ toolchain pins Node 26 and pnpm
 
 ## Handoff
 
-- **Settled mid-build:** none
-- **Dispatched:** none
-- **Boundary:** none closed yet
-- **Abandoned:** none
-- **Walked:** -
+- **Settled mid-build:** user granted the `workflow` scope to `gh` so the CI workflow could be pushed (2026-11-24)
+- **Dispatched:** Verifier, round 1, at the commit after 434ed21
+- **Boundary:** C1-C37 closed at 434ed21; CI run 45484480977 green on PR #19
+- **Abandoned:** corepack for pnpm (not in Node 26); committing drizzle-kit pull's full output (random file names); nestjs-pino's own HTTP middleware (skipped static files); a hardcoded port in the fresh-clone proof (55432 is taken on the owner's machine)
+- **Walked:** - (no capture binds; the page's states are proven by Playwright at both widths, C4-C6)
