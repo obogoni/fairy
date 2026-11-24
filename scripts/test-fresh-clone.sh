@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Proves the README path from a fresh clone of HEAD: compose Postgres, migrate, seed, `pnpm dev`,
-# and a browser sees the greeting. Its database runs on port 55432 so it can't touch yours.
+# and a browser sees the greeting. Its database runs on a free port so it can't touch yours.
 set -euo pipefail
 repo="$(git rev-parse --show-toplevel)"
 work="$(mktemp -d)"
 dev_pid=""
 export COMPOSE_PROJECT_NAME="fairy-fresh-$$"
-export POSTGRES_PORT=55432
+POSTGRES_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
+export POSTGRES_PORT
 
 cleanup() {
   [[ -n "$dev_pid" ]] && kill -- "-$dev_pid" 2>/dev/null || true
