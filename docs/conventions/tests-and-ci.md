@@ -18,7 +18,7 @@ Why: D2, D4, D10, [ADR 0002](../adr/0002-nestjs-for-the-api.md).
 
 ## CI gates
 
-Every pull request must pass all of these:
+`main` is protected: no direct pushes, and every pull request must pass all of these before merge:
 
 1. `pnpm install --frozen-lockfile`
 2. Prettier check and ESLint

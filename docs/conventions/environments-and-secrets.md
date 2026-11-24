@@ -1,6 +1,6 @@
 # Environments and secrets
 
-Why: [ADR 0006](../adr/0006-no-staging-environment.md), [ADR 0007](../adr/0007-secrets-in-github.md).
+Why: [ADR 0006](../adr/0006-no-staging-environment.md), [ADR 0007](../adr/0007-secrets-in-github.md), [ADR 0012](../adr/0012-public-repository.md).
 
 ## Environments
 
@@ -37,7 +37,8 @@ Why: [ADR 0006](../adr/0006-no-staging-environment.md), [ADR 0007](../adr/0007-s
 
 ## Secrets
 
-- GitHub Actions secrets are the source of truth. Locally, use `.env`.
+- GitHub Actions secrets are the source of truth. Production secrets live in the `production` environment, which only `main` can use. Locally, use `.env`.
+- The repo is public: nothing secret or personal goes in a file, commit, issue or PR.
 - Workflows write the VM's secrets to root-owned `0600` files. Nothing else puts secrets on the VM.
 - Each environment has its own Google OAuth client, and production's allows only production's redirect URL.
 - Rotate a secret when it may have leaked or someone loses access, then redeploy.

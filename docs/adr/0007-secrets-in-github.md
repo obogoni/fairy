@@ -11,7 +11,7 @@ Production needs database passwords for three roles, the Google client secret, t
 
 ## Decision
 
-- GitHub Actions secrets are the single source of truth. Deploy and provisioning jobs write what the VM needs into root-owned `0600` files.
+- GitHub Actions secrets are the single source of truth: production ones in the `production` environment, restricted to `main`. Deploy and provisioning jobs write what the VM needs into root-owned `0600` files.
 - Each place holds only what it needs:
   - **The VM:** the app's role, the Google secret, and the Tunnel and Grafana tokens.
   - **CI:** the owner role, for migrations.
@@ -27,4 +27,4 @@ A compromised VM can read and write tenant data under RLS, but cannot change the
 ## Consequences
 
 - GitHub secrets can't be read back. Rebuilding the VM means running provisioning and the deploy again.
-- **Open:** environment secrets on a private repository need GitHub Pro, Team or Enterprise ([GitHub docs](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments), read 2026-11-23). On GitHub Free, repository secrets are used instead, read only by workflows that run on `main`. The owner confirms the plan.
+- Production secrets sit in a GitHub `production` environment that only `main` can deploy to. That's available because the repository is public (ADR 0012).

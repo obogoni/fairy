@@ -41,3 +41,4 @@ Product and architecture decisions D1 to D10 live in [the first version's design
 | [0009](0009-docker-and-ansible-on-the-vm.md) | Docker and Ansible on the VM | Accepted |
 | [0010](0010-blue-green-deploys-pushed-from-ci.md) | Blue-green deploys pushed from CI | Accepted |
 | [0011](0011-terraform-for-cloudflare.md) | Terraform for Cloudflare | Accepted |
+| [0012](0012-public-repository.md) | Public repository, all rights reserved | Accepted |
