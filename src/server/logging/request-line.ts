@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { isIP } from 'node:net';
 
 interface RoutedRequest extends IncomingMessage {
   baseUrl?: string;
@@ -39,8 +40,10 @@ export function requestLine(
     status: res.statusCode,
     ms: Math.round(responseTime),
   };
+  // Cloudflare sets this header behind the Tunnel, but a client can send anything in it, so
+  // only an IP address is logged, never another value (D4).
   const ip = req.headers['cf-connecting-ip'];
-  if (typeof ip === 'string') {
+  if (typeof ip === 'string' && isIP(ip) !== 0) {
     line.ip = ip;
   }
   return line;

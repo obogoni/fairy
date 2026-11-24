@@ -17,10 +17,11 @@ it('migrations create roles nologin and hold no password', () => {
   expect(migrations.length).toBeGreaterThan(0);
   for (const { sql } of migrations) {
     expect(sql).not.toMatch(/\bpassword\b/);
-    for (const statement of sql.match(/create\s+role\s+[^;]+;/g) ?? []) {
+    // CREATE USER is CREATE ROLE ... LOGIN by default; ALTER USER is an alias of ALTER ROLE.
+    for (const statement of sql.match(/create\s+(role|user|group)\s+[^;]+;/g) ?? []) {
       expect(statement).toMatch(/\bnologin\b/);
     }
-    expect(sql).not.toMatch(/alter\s+role\s+\w+[^;]*\blogin\b/);
+    expect(sql).not.toMatch(/alter\s+(role|user|group)\s+\w+[^;]*\blogin\b/);
   }
   const all = migrations.map(({ sql }) => sql).join('\n');
   expect(all).toMatch(/create\s+role\s+fairy_app\s+nologin/);

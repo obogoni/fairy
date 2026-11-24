@@ -6,7 +6,7 @@ Run int: `docker compose up -d --wait db && pnpm vitest run --project integratio
 Run e2e: `docker compose up -d --wait db && pnpm build && pnpm exec playwright test --reporter=list`
 Plan: `.specs/features/hello-world-skeleton/plan.md`
 
-37 checks in 5 slices · 6 one-way doors · 0 open, of which 0 block
+38 checks in 5 slices · 6 one-way doors · 0 open, of which 0 block
 
 Proofs run with Node 26 on `PATH` (`mise exec node@26 -- python3 …/check_proofs.py hello-world-skeleton`) and Docker available.
 
@@ -143,6 +143,10 @@ Proof: run int | ✓ errors: unknown routes answer 404 not_found
 **C37** - `.nvmrc` is `26`, `engines.node` is `>=26 <27`, and `packageManager` pins `pnpm@12.23.0` (Landing door 6)
 Proof: run unit | ✓ toolchain pins Node 26 and pnpm
 
+**C38** - The greeting test itself passes at both sizes: `/` shows "Fairy" and "Olá do banco de dados!" on `Pixel 7` and `Desktop Chrome` (AC 4; appended after verification: C4's proof line matched any passing test in the file)
+Proof: run e2e | ✓ [phone] › e2e/hello.spec.ts › shows the greeting
+Proof: run e2e | ✓ [desktop] › e2e/hello.spec.ts › shows the greeting
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -153,16 +157,16 @@ Proof: run unit | ✓ toolchain pins Node 26 and pnpm
 | `GET /*` SPA fallback statuses (1) | 200 C7 | - |
 | Landing doors (6) | 1 tables C12, C17 · 2 roles C35, C18 · 3 null-safe policy C16, C15 · 4 error contract C3, C24, C25, C36 · 5 health paths C9, C10 · 6 toolchain C37 | - |
 | problem `type` codes (4) | `validation_error` C25 · `not_found` C36 · `service_unavailable` C3 · `internal_error` C24 | - |
-| page states (4) | loading C5 · success C4 · error C6 · retry C6 | - |
-| widths (2) | `Pixel 7` C4, C6 · `Desktop Chrome` C4, C6 | - |
+| page states (4) | loading C5 · success C4, C38 · error C6 · retry C6 | - |
+| widths (2) | `Pixel 7` C4, C38, C6 · `Desktop Chrome` C4, C38, C6 | - |
 | `Cache-Control` by response (3) | API `no-store` C1 · assets `immutable` C8 · `index.html` `no-cache` C7 | - |
 | isolation operations as `fairy_app` (5) | select C12 · update C13 · delete C13 · insert C14 · no context C15 | - |
 | AC 16 example (1) | pooled connection after `withTenant` C16 | - |
 | canary paths (4) | success C22 · `400` C22 · unique violation C22 · check violation C22 | - |
-| canary carriers (4) | body C22 · query C22 · header C22 · cookie C22 | - |
+| canary carriers (5) | body C22 · query C22 · header `X-Paciente` C22 · header `CF-Connecting-IP` C22 · cookie C22 | - |
 | canary values (4) | name C22 · phone C22 · e-mail C22 · cookie C22 | - |
 | CI gates (8) | install C27, C34 · format+lint C27, C34 · typecheck C27, C34 · migrations untouched C27, C28 · unit+int C27, C30 · schema sync C27, C29 · build C27, C34 · e2e C27, C30 | - |
-| migrations gate examples (3) | edit C28 · delete C28 · add C28 | - |
+| migrations gate examples (4) | edit C28 · delete C28 · type change C28 · add C28 | - |
 | startup config: assemblies (3) | `src/server/main.ts` C11, C31 · integration test harness C1 · Docker image C11, C31 | - |
 | required env vars (2) | `DATABASE_URL` C11 · `DEMO_TENANT_ID` C11 | - |
 

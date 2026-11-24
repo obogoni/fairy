@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from 'vitest';
 import { seedDemo } from '../db/demo-seed.js';
@@ -24,16 +27,23 @@ const NEEDLES = Object.values(CANARIES).flatMap((value) => [
 describe('logging', () => {
   const tenant = randomUUID();
   let testApp: TestApp;
+  let clientDist: string;
 
   beforeAll(async () => {
     await seedDemo(db.ownerUrl, tenant);
-    testApp = await createTestApp({ DATABASE_URL: db.appUrl, DEMO_TENANT_ID: tenant }, [
-      CanaryController,
-    ]);
+    clientDist = mkdtempSync(join(tmpdir(), 'fairy-client-'));
+    mkdirSync(join(clientDist, 'assets'));
+    writeFileSync(join(clientDist, 'index.html'), '<!doctype html><title>Fairy</title>');
+    writeFileSync(join(clientDist, 'assets', 'index-Ab12Cd34.js'), 'console.log(1)');
+    testApp = await createTestApp(
+      { DATABASE_URL: db.appUrl, DEMO_TENANT_ID: tenant, CLIENT_DIST: clientDist },
+      [CanaryController],
+    );
   });
 
   afterAll(async () => {
     await testApp.close();
+    rmSync(clientDist, { recursive: true, force: true });
   });
 
   let before = 0;
@@ -43,30 +53,41 @@ describe('logging', () => {
   const newLogs = () => testApp.logs().slice(before);
 
   it('logging: one request line of chosen fields per request', async () => {
-    const response = await request(testApp.app.getHttpServer()).get('/hello?nome=Maria');
-    expect(response.status).toBe(200);
+    const server = testApp.app.getHttpServer();
+    // An API route, a hashed asset (served before the Nest routes) and the SPA fallback.
+    const cases = [
+      { path: '/hello?nome=Maria', route: '/hello' },
+      { path: '/assets/index-Ab12Cd34.js?v=Maria', route: '/assets/*' },
+      { path: '/agenda/Maria', route: '/{*path}' },
+    ];
+    for (const { path, route } of cases) {
+      const start = testApp.logs().length;
+      const response = await request(server).get(path);
+      expect(response.status, path).toBe(200);
 
-    const requestLines = newLogs().filter((line) => line.msg === 'request.completed');
-    expect(requestLines).toHaveLength(1);
-    const line = requestLines[0] ?? {};
-    expect(line).toMatchObject({ method: 'GET', route: '/hello', status: 200 });
-    expect(typeof line.ms).toBe('number');
-    expect(line.reqId).toBe(response.headers['x-request-id']);
-    expect(Object.keys(line).sort()).toEqual(
-      [
-        'hostname',
-        'level',
-        'method',
-        'ms',
-        'msg',
-        'pid',
-        'reqId',
-        'route',
-        'status',
-        'time',
-      ].sort(),
-    );
-    expect(JSON.stringify(newLogs())).not.toContain('Maria');
+      const lines = testApp.logs().slice(start);
+      const requestLines = lines.filter((line) => line.msg === 'request.completed');
+      expect(requestLines, path).toHaveLength(1);
+      const line = requestLines[0] ?? {};
+      expect(line, path).toMatchObject({ method: 'GET', route, status: 200 });
+      expect(typeof line.ms).toBe('number');
+      expect(line.reqId).toBe(response.headers['x-request-id']);
+      expect(Object.keys(line).sort()).toEqual(
+        [
+          'hostname',
+          'level',
+          'method',
+          'ms',
+          'msg',
+          'pid',
+          'reqId',
+          'route',
+          'status',
+          'time',
+        ].sort(),
+      );
+      expect(JSON.stringify(lines), path).not.toContain('Maria');
+    }
   });
 
   it('logging: no canary reaches the logs', async () => {
@@ -77,6 +98,8 @@ describe('logging', () => {
         .post(`${path}${query}`)
         .set('Cookie', CANARIES.cookie)
         .set('X-Paciente', `${CANARIES.name}; ${CANARIES.email}`)
+        // The one header the request line reads: it must never carry anything but an IP.
+        .set('CF-Connecting-IP', CANARIES.email)
         .send(body);
     const patient = { name: CANARIES.name, phone: CANARIES.phone, email: CANARIES.email };
 

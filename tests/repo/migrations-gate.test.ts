@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -41,6 +41,15 @@ describe('migrations-untouched gate', () => {
   it('migrations gate fails when an existing migration is deleted', () => {
     git('rm', '-q', 'db/migrations/0001_first.sql');
     git('commit', '-q', '-m', 'delete');
+    expect(gate()).toBe(1);
+  });
+
+  it('migrations gate fails when an existing migration becomes a symlink', () => {
+    writeFileSync(join(repo, 'elsewhere.sql'), '-- migrate:up\nselect 4;\n');
+    unlinkSync(join(repo, 'db/migrations/0001_first.sql'));
+    symlinkSync('../../elsewhere.sql', join(repo, 'db/migrations/0001_first.sql'));
+    git('add', '-A');
+    git('commit', '-q', '-m', 'symlink');
     expect(gate()).toBe(1);
   });
 
