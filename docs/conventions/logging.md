@@ -1,59 +1,51 @@
 # Logging
 
-Decided 2026-11-23 in spike #2.
+Why: D4, [ADR 0008](../adr/0008-grafana-cloud-for-observability.md).
 
-## Rule (D4)
+## Rule
 
-Logs never contain patient names or phones, the dentist's e-mail, cookies, session ids, sign-in codes or tokens. The safe way to keep that true is to **log only fields we chose**, never whole objects that might carry data: request bodies, query results, raw URLs or full errors.
+Logs never contain patient names or phones, the dentist's e-mail, cookies, session ids, sign-in codes or tokens (D4). **Log only fields you chose**: never whole request bodies, query results, raw URLs or error objects.
 
 ## Tools
 
-- `nestjs-pino` replaces Nest's logger (`app.useLogger`), so Nest's own messages go through the same rules. It writes one JSON line per event to stdout.
+- `nestjs-pino` replaces Nest's logger and writes JSON lines to stdout. On the VM they go to journald.
 - No `console.*` in server code (ESLint `no-console`).
-- On the VM, systemd sends stdout to journald (server convention). There's no nginx or PM2 in front of the app to log URLs on their own: `cloudflared` talks to the Node process directly.
-- `cloudflared` runs at log level `info` or quieter. Debug levels log request details.
+- Nothing else in front of the app logs requests: no nginx or PM2, and Caddy's access log stays off.
+- `cloudflared` runs at log level `info` or quieter (debug levels log request details).
 
-## What a request logs
+## Request line
 
-One line when the request ends:
+One line per request, built by custom serializers. Headers are never logged.
 
-| Field | Source | Note |
-|---|---|---|
-| `reqId` | generated per request, echoed in an `X-Request-Id` response header | ties a user report to a log line |
-| `method`, `route` | the matched route **pattern**, e.g. `/appointments/:id` | never the raw URL or query string |
-| `status`, `ms` | response | |
-| `tenantId` | from `SessionGuard` | an opaque UUID, absent before sign-in |
-| `ip` | `CF-Connecting-IP` (D9) | retention is open, see below |
+| Field | Source |
+|---|---|
+| `reqId` | generated, echoed in `X-Request-Id` |
+| `method`, `route` | the route **pattern** (`/appointments/:id`), never the raw URL |
+| `status`, `ms` | response |
+| `tenantId` | `SessionGuard`, absent before sign-in |
+| `ip` | `CF-Connecting-IP` |
 
-That's done with custom `req`/`res` serializers. Headers are not logged at all, which covers `Cookie`, `Set-Cookie` and `Authorization` without relying on a redact list. pino's `redact` lists them anyway, as a second guard.
+pino's `redact` also lists `cookie`, `set-cookie` and `authorization`, as a second guard.
 
-## Logging in code
+## In code
 
-- Log events with a stable message and chosen fields: `logger.info({ appointmentId }, 'appointment.created')`. Ids are fine. Values typed by people are not.
-- Log levels: `error` for something that needs a person, `warn` for something odd but handled, `info` for request lines and important events. `debug` is off in production.
+- Write `logger.info({ appointmentId }, 'appointment.created')`: a stable message plus chosen fields. Ids are fine. Values typed by people are not.
+- Levels: `error` needs a person, `warn` is odd but handled, `info` is request lines and key events. `debug` is off in production.
 
 ## Errors
 
-Error objects carry data, so they are never logged whole:
-
-- Drizzle wraps driver errors in `DrizzleQueryError`, which carries the failed SQL and **its parameters** (`query`, `params`), which can be patient names and phones. Its message may repeat them. The Postgres error is in `cause`.
-- Postgres errors carry a `detail` that repeats row values (`Key (x)=(...)`, `Failing row contains (...)`).
-
-The error serializer unwraps `cause` and keeps only: the error class, Postgres `code` (SQLSTATE), `constraint`, `table`, and the stack trace **of our code**. It drops `message` and `detail` for database errors, and drops every `params` field. The global exception filter (framework.md) logs through that serializer.
+- Log errors only through the error serializer, used by the global exception filter.
+- It unwraps `cause` and keeps the error class, the Postgres `code`, `constraint`, `table`, and our stack trace.
+- It drops `message`, `detail` and `params` (`DrizzleQueryError` carries the query's parameters, and Postgres `detail` repeats row values).
 
 ## Proof
 
-An integration test runs requests carrying canary values (a fake patient name, phone, e-mail and cookie) through success, validation-error and database-error paths, including a unique violation and a check violation. It captures all log output and fails if any canary appears. Each slice that adds an endpoint with patient data adds its paths to this test.
+A canary test sends a fake patient name, phone, e-mail and cookie through success, validation-error and database-error paths, including a unique violation and a check violation. It fails if any of them appears in the captured logs. Each endpoint that takes patient data adds its paths.
 
 ## Client
 
-No analytics and no third-party error reporting in the browser (D4). The observability work before go-live decides whether client errors are reported, and how.
+No analytics and no third-party error reporting in the browser (D4).
 
 ## Retention
 
-- **Grafana Cloud** (observability.md) receives every log line within seconds and keeps it for 14 days. That's where logs are read and alerted on, and it survives a rebuilt or compromised VM.
-- **journald on the VM** keeps a longer local copy with a size cap. At one dentist's volume, six months is in the tens of MB.
-
-## Open
-
-- **IP addresses and the Marco Civil.** It may require application providers to keep access records (IP, date and time) for six months. Whether that applies to Fairy, and how it sits with LGPD minimisation, is on the go-live checklist (#11).
+Grafana Cloud keeps 14 days (observability.md). journald on the VM keeps a size-capped local copy.

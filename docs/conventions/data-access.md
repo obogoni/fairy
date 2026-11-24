@@ -1,25 +1,25 @@
 # Data access
 
-Decided 2026-11-23 in spike #2.
+Why: [ADR 0003](../adr/0003-drizzle-database-first-with-dbmate.md), [ADR 0004](../adr/0004-explicit-tenant-context-per-transaction.md).
 
 ## Tools
 
-- Drizzle ORM on the `node-postgres` (`pg`) driver. Raw SQL through Drizzle's `sql` tag is fine wherever it reads better.
-- Database first: SQL migrations define the schema (migrations-and-ids.md). [`drizzle-kit pull`](https://orm.drizzle.team/docs/drizzle-kit-pull) reads the migrated database and generates the Drizzle schema into `src/server/db/generated/`, with `introspect.casing: 'camel'` so code uses camelCase.
-- Generated files are committed and never edited by hand. **Do not run `drizzle-kit generate`, `migrate` or `push`**: only dbmate changes the schema.
-- `pnpm db:migrate` runs dbmate. `pnpm db:pull` runs `drizzle-kit pull` and formats the output. After writing a migration, run both and commit the migration and the regenerated schema together.
+- Drizzle on the `pg` driver, for queries. Raw SQL through Drizzle's `sql` tag is fine where it reads better.
+- The schema comes from the database. `pnpm db:migrate` runs dbmate, then `pnpm db:pull` runs `drizzle-kit pull` into `src/server/db/generated/` with `introspect.casing: 'camel'`, and formats it.
+- Commit the migration and the regenerated schema together. Never edit generated files.
+- **Never run `drizzle-kit generate`, `migrate` or `push`.** Only dbmate changes the schema.
 
 ## Roles (D2)
 
 | Role | Used by | Rights |
 |---|---|---|
-| owner | dbmate | owns the tables; used only to migrate |
-| `fairy_app` | the app | not the owner, no `BYPASSRLS`; created in a migration, never in Neon's console |
+| owner | dbmate, from CI | owns the tables; migrations only |
+| `fairy_app` | the app | not the owner, no `BYPASSRLS`; created in a migration, never in Neon's console (console roles bypass RLS) |
 | `fairy_admin` | the owner's admin command | manages invitations |
 
 ## Tenant context
 
-Every query on tenant data runs inside `TenantDb.withTenant`. `TenantDb` is a singleton provider from `DbModule`:
+Every query on tenant data runs inside `TenantDb.withTenant`:
 
 ```ts
 @Injectable()
@@ -35,16 +35,10 @@ export class TenantDb {
 }
 ```
 
-The controller takes the tenant id from `@TenantId()` and passes it to the service as an argument. The tenant is passed explicitly, never pulled from request-scoped providers or CLS, so every place that touches tenant data says so in its signature.
-
-- `true` makes the setting local to the transaction, so it ends with the transaction and never leaks through the pool (D2).
-- Policies read `current_setting('app.tenant_id', true)::uuid`. With no tenant set, the value is null and the query sees no rows.
-- Work done before a tenant is known runs outside `withTenant`, through narrow `security definer` functions. Only the three operations D2 allows get one.
+- Pass the tenant id as an argument from `@TenantId()` to the service. Never use request-scoped providers or CLS for it.
+- Policies read `current_setting('app.tenant_id', true)::uuid`. With no tenant set, queries see no rows.
+- Work done before a tenant is known uses narrow `security definer` functions, only for the three operations D2 allows.
 
 ## Pool
 
-The app owns one `pg.Pool`, with a small `max` and a short `idleTimeoutMillis` so idle connections close and Neon can sleep (D3). Spike #3 sets the values.
-
-## To confirm in the hello-world
-
-Which files `drizzle-kit pull` writes besides `schema.ts` and `relations.ts`, such as snapshots and a SQL file, and which of them are committed.
+One `pg.Pool` with a small `max` and a short `idleTimeoutMillis`, so Neon can sleep (D3). Spike #3 sets the values.
