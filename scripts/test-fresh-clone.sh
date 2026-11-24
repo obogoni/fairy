@@ -36,14 +36,19 @@ pnpm -s db:seed
 setsid pnpm dev >"$work/dev.log" 2>&1 &
 dev_pid=$!
 
+# Both halves of `pnpm dev` must be up: the API (it compiles first) and Vite.
+for url in http://localhost:3000/health/live http://localhost:5173/; do
+  for _ in $(seq 1 120); do
+    curl -fsS "$url" >/dev/null 2>&1 && break
+    sleep 1
+  done
+done
+
 node --input-type=module -e "
   import { chromium } from '@playwright/test';
   const browser = await chromium.launch();
   const page = await browser.newPage();
-  for (let attempt = 0; attempt < 60; attempt++) {
-    try { await page.goto('http://localhost:5173/'); break; }
-    catch { await new Promise((r) => setTimeout(r, 1000)); }
-  }
+  await page.goto('http://localhost:5173/');
   await page.getByText('Olá do banco de dados!').waitFor({ timeout: 60000 });
   await browser.close();
   console.log('Fresh clone shows the greeting.');
