@@ -6,7 +6,7 @@ Run int: `docker compose up -d --wait db && pnpm vitest run --project integratio
 Run e2e: `docker compose up -d --wait db && pnpm build && pnpm exec playwright test --reporter=list`
 Plan: `.specs/features/hello-world-skeleton/plan.md`
 
-38 checks in 5 slices · 6 one-way doors · 0 open, of which 0 block
+41 checks in 6 slices · 13 one-way doors · 0 open, of which 0 block
 
 Proofs run with Node 26 on `PATH` (`mise exec node@26 -- python3 …/check_proofs.py hello-world-skeleton`) and Docker available.
 
@@ -147,6 +147,18 @@ Proof: run unit | ✓ toolchain pins Node 26 and pnpm
 Proof: run e2e | ✓ [phone] › e2e/hello.spec.ts › shows the greeting
 Proof: run e2e | ✓ [desktop] › e2e/hello.spec.ts › shows the greeting
 
+### S6 - Fixes from the pull request review
+
+**C39** - Every policy reads the tenant only through `app_tenant_id()`, which is null when the setting was never set or reads `''` (AC 34)
+Proof: run int | ✓ schema: every policy reads the tenant through app_tenant_id
+Proof: run int | ✓ schema: app_tenant_id is null when no tenant or an empty tenant is set
+
+**C40** - A body over the limit answers `413 bad_request`; malformed JSON stays `400 validation_error` (AC 35)
+Proof: run int | ✓ errors: other client errors answer bad_request, malformed JSON validation_error
+
+**C41** - The migrations gate fails when the branch adds a migration not numbered above the highest on `main` (AC 36)
+Proof: run unit | ✓ migrations gate fails when a new migration is not numbered above the base
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -156,7 +168,7 @@ Proof: run e2e | ✓ [desktop] › e2e/hello.spec.ts › shows the greeting
 | `GET /health/ready` statuses (2) | 200 C10 · 503 C10 | - |
 | `GET /*` SPA fallback statuses (1) | 200 C7 | - |
 | Landing doors (6) | 1 tables C12, C17 · 2 roles C35, C18 · 3 null-safe policy C16, C15 · 4 error contract C3, C24, C25, C36 · 5 health paths C9, C10 · 6 toolchain C37 | - |
-| problem `type` codes (4) | `validation_error` C25 · `not_found` C36 · `service_unavailable` C3 · `internal_error` C24 | - |
+| problem `type` codes (5) | `validation_error` C25, C40 · `bad_request` C40 · `not_found` C36 · `service_unavailable` C3 · `internal_error` C24 | - |
 | page states (4) | loading C5 · success C4, C38 · error C6 · retry C6 | - |
 | widths (2) | `Pixel 7` C4, C38, C6 · `Desktop Chrome` C4, C38, C6 | - |
 | `Cache-Control` by response (3) | API `no-store` C1 · assets `immutable` C8 · `index.html` `no-cache` C7 | - |
@@ -166,7 +178,7 @@ Proof: run e2e | ✓ [desktop] › e2e/hello.spec.ts › shows the greeting
 | canary carriers (5) | body C22 · query C22 · header `X-Paciente` C22 · header `CF-Connecting-IP` C22 · cookie C22 | - |
 | canary values (4) | name C22 · phone C22 · e-mail C22 · cookie C22 | - |
 | CI gates (8) | install C27, C34 · format+lint C27, C34 · typecheck C27, C34 · migrations untouched C27, C28 · unit+int C27, C30 · schema sync C27, C29 · build C27, C34 · e2e C27, C30 | - |
-| migrations gate examples (4) | edit C28 · delete C28 · type change C28 · add C28 | - |
+| migrations gate examples (5) | edit C28 · delete C28 · type change C28 · add C28 · number not above base C41 | - |
 | startup config: assemblies (3) | `src/server/main.ts` C11, C31 · integration test harness C1 · Docker image C11, C31 | - |
 | required env vars (2) | `DATABASE_URL` C11 · `DEMO_TENANT_ID` C11 | - |
 

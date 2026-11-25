@@ -36,7 +36,7 @@ export class TenantDb {
 ```
 
 - Pass the tenant id as an argument from `@TenantId()` to the service. Never use request-scoped providers or CLS for it.
-- Policies read `current_setting('app.tenant_id', true)::uuid`. With no tenant set, queries see no rows.
+- **Policies call `app_tenant_id()`**, for example `using (tenant_id = app_tenant_id()) with check (tenant_id = app_tenant_id())`. Never read the setting in a policy directly (after a transaction, a pooled connection reads it as `''`, and `''::uuid` throws). With no tenant set, queries see no rows. A schema test fails on any policy that doesn't use it.
 - Work done before a tenant is known uses narrow `security definer` functions, only for the three operations D2 allows.
 
 ## Pool

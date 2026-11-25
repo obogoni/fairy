@@ -39,6 +39,27 @@ describe('schema', () => {
     }
   });
 
+  it('schema: every policy reads the tenant through app_tenant_id', async () => {
+    const policies = await rows<{ table: string; qual: string | null; check: string | null }>(`
+      select tablename as table, qual, with_check as check
+      from pg_policies where schemaname = 'public' order by tablename`);
+    expect(policies.map((policy) => policy.table)).toEqual(['greetings', 'tenants']);
+    for (const policy of policies) {
+      for (const expression of [policy.qual, policy.check]) {
+        expect(expression, policy.table).toContain('app_tenant_id()');
+        expect(expression, policy.table).not.toContain('current_setting');
+      }
+    }
+  });
+
+  it('schema: app_tenant_id is null when no tenant or an empty tenant is set', async () => {
+    const result = await rows<{ never_set: string | null; emptied: string | null }>(`
+      select app_tenant_id() as never_set,
+             (select set_config('app.tenant_id', '', false) is not null) and app_tenant_id() is null
+               as emptied`);
+    expect(result).toEqual([{ never_set: null, emptied: true }]);
+  });
+
   it('schema: fairy_app owns nothing and cannot bypass RLS', async () => {
     const owned = await rows("select tablename from pg_tables where tableowner = 'fairy_app'");
     expect(owned).toEqual([]);

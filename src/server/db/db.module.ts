@@ -1,6 +1,7 @@
 import { Global, Inject, Logger, Module, type OnApplicationShutdown } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
+import { serializeError } from '../common/errors.js';
 import type { AppConfig } from '../config/config.js';
 import { createDb } from './drizzle.js';
 import { TenantDb } from './tenant-db.js';
@@ -22,7 +23,7 @@ import { DRIZZLE, PG_POOL } from './tokens.js';
         });
         const logger = new Logger('Pool');
         pool.on('error', (error) => {
-          logger.error({ error: { class: error.name } }, 'pool.idle_client_error');
+          logger.error({ error: serializeError(error) }, 'pool.idle_client_error');
         });
         return pool;
       },

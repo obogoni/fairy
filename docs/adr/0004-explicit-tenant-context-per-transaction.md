@@ -15,7 +15,7 @@ In NestJS, the tenant can reach the query in three ways: passed explicitly as an
 
 - Every query on tenant data runs inside `TenantDb.withTenant(tenantId, fn)`. It opens a transaction and runs `set_config('app.tenant_id', $1, true)`. The `true` makes the setting local to the transaction.
 - Controllers read the tenant id with `@TenantId()` and pass it to services as an argument.
-- Policies read `current_setting('app.tenant_id', true)::uuid`. When no tenant is set, the value is null and queries see no rows.
+- Policies call `app_tenant_id()`, defined once in the first migration as `nullif(current_setting('app.tenant_id', true), '')::uuid`. When no tenant is set, it returns null and queries see no rows. The `nullif` matters: after a transaction that set the tenant, a pooled connection reads the setting as `''`, and casting that to `uuid` throws error 22P02 instead of returning no rows.
 
 ## Alternatives considered
 

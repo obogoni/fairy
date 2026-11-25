@@ -10,7 +10,7 @@ Why: [ADR 0003](../adr/0003-drizzle-database-first-with-dbmate.md), [ADR 0005](.
 ## Tables
 
 - Names are plural snake_case. Columns are snake_case.
-- Every tenant-owned table has `tenant_id uuid not null`, RLS `enable`d and `force`d, and a policy on `tenant_id`.
+- Every tenant-owned table has `tenant_id uuid not null`, RLS `enable`d and `force`d, and a policy on `tenant_id` that calls `app_tenant_id()` (data-access.md).
 - References between tenant-owned tables are composite, `(tenant_id, x_id)` → `unique (tenant_id, id)`, because foreign-key checks bypass RLS (D2).
 - Instants are `timestamptz`. An appointment's agreed time is a local `date` plus `time` (D5).
 - Appointments are never deleted. Cancelling is a state change (D8).
@@ -29,4 +29,5 @@ Why: [ADR 0003](../adr/0003-drizzle-database-first-with-dbmate.md), [ADR 0005](.
 An integration test migrates a fresh Postgres and asserts:
 
 1. Every table with `tenant_id` has RLS enabled and forced.
-2. `fairy_app` owns no table and lacks `BYPASSRLS`.
+2. Every policy reads the tenant only through `app_tenant_id()`.
+3. `fairy_app` owns no table and lacks `BYPASSRLS`.

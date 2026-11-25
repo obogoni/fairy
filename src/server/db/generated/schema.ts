@@ -23,8 +23,8 @@ export const tenants = pgTable(
       as: 'permissive',
       for: 'all',
       to: ['public'],
-      using: sql`(id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)`,
-      withCheck: sql`(id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)`,
+      using: sql`(id = app_tenant_id())`,
+      withCheck: sql`(id = app_tenant_id())`,
     }),
   ],
 );
@@ -47,8 +47,8 @@ export const greetings = pgTable(
       as: 'permissive',
       for: 'all',
       to: ['public'],
-      using: sql`(tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)`,
-      withCheck: sql`(tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)`,
+      using: sql`(tenant_id = app_tenant_id())`,
+      withCheck: sql`(tenant_id = app_tenant_id())`,
     }),
     check(
       'greetings_message_check',

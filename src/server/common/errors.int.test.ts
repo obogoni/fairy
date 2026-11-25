@@ -51,6 +51,29 @@ describe('errors', () => {
     expect(response.text).not.toContain('Canário');
   });
 
+  it('errors: other client errors answer bad_request, malformed JSON validation_error', async () => {
+    const server = testApp.app.getHttpServer();
+    const tooLarge = await request(server)
+      .post('/test/patients')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ name: 'x'.repeat(200 * 1024) }));
+    expect(tooLarge.status).toBe(413);
+    expect(tooLarge.headers['content-type']).toMatch(/^application\/problem\+json/);
+    expect(tooLarge.body).toEqual({ type: 'bad_request', title: 'Bad request', status: 413 });
+
+    const malformed = await request(server)
+      .post('/test/patients')
+      .set('Content-Type', 'application/json')
+      .send('{"name": "Paciente Canário Zé"');
+    expect(malformed.status).toBe(400);
+    expect(malformed.body).toEqual({
+      type: 'validation_error',
+      title: 'Invalid request',
+      status: 400,
+    });
+    expect(malformed.text).not.toContain('Canário');
+  });
+
   it('errors: unknown routes answer 404 not_found', async () => {
     const response = await request(testApp.app.getHttpServer()).post('/nao-existe').send({});
     expect(response.status).toBe(404);

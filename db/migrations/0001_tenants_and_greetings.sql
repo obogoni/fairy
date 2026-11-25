@@ -27,19 +27,26 @@ create table greetings (
   unique (tenant_id, id)
 );
 
--- Tenant isolation (door 3). nullif: on a pooled connection, a setting a past transaction set
--- locally reads '' afterwards, and ''::uuid would throw instead of matching nothing.
+-- Tenant isolation (door 3). Every policy calls app_tenant_id() and never reads the setting
+-- itself: on a pooled connection, a setting a past transaction set locally reads '' afterwards,
+-- and ''::uuid would throw instead of matching nothing. nullif turns '' into null, which
+-- matches no row.
+create function app_tenant_id() returns uuid
+  language sql
+  stable
+  as $$ select nullif(current_setting('app.tenant_id', true), '')::uuid $$;
+
 alter table tenants enable row level security;
 alter table tenants force row level security;
 create policy tenant_isolation on tenants
-  using (id = nullif(current_setting('app.tenant_id', true), '')::uuid)
-  with check (id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+  using (id = app_tenant_id())
+  with check (id = app_tenant_id());
 
 alter table greetings enable row level security;
 alter table greetings force row level security;
 create policy tenant_isolation on greetings
-  using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
-  with check (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+  using (tenant_id = app_tenant_id())
+  with check (tenant_id = app_tenant_id());
 
 grant usage on schema public to fairy_app, fairy_admin;
 grant select on tenants to fairy_app;

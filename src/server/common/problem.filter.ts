@@ -26,16 +26,6 @@ export class ProblemFilter implements ExceptionFilter {
   }
 }
 
-function isBodyParserError(exception: unknown): boolean {
-  return (
-    typeof exception === 'object' &&
-    exception !== null &&
-    'type' in exception &&
-    typeof exception.type === 'string' &&
-    exception.type.startsWith('entity.')
-  );
-}
-
 export function toProblem(exception: unknown): Problem {
   if (exception instanceof ProblemException) {
     return exception.toProblem();
@@ -48,12 +38,14 @@ export function toProblem(exception: unknown): Problem {
     if (status === 404) {
       return { type: 'not_found', title: 'Not found', status };
     }
-    if (status >= 400 && status < 500) {
+    // Nest turns body-parser failures into HttpExceptions too: malformed JSON is a 400, an
+    // oversized body a 413.
+    if (status === 400) {
       return { type: 'validation_error', title: 'Invalid request', status };
     }
-  }
-  if (isBodyParserError(exception)) {
-    return { type: 'validation_error', title: 'Invalid request body', status: 400 };
+    if (status > 400 && status < 500) {
+      return { type: 'bad_request', title: 'Bad request', status };
+    }
   }
   return { type: 'internal_error', title: 'Internal server error', status: 500 };
 }

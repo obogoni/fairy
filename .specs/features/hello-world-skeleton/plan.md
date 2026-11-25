@@ -87,6 +87,10 @@ New: `tenants`, `greetings`, roles `fairy_app` and `fairy_admin`. One-way constr
 | 9. Generated schema files (found mid-build) | only `schema.ts` and `relations.ts` from `drizzle-kit pull` are committed, through `scripts/db-pull.sh`, formatted with the repo's Prettier config | committing pull's whole output: it adds a randomly named SQL file and a snapshot, so the schema-sync gate could never match |
 | 10. Request logging mounted before static files (found mid-build) | `configureApp` mounts pino-http first with `app.use(httpLogger(...))`; nestjs-pino runs with `useExisting: true` | nestjs-pino's own middleware: it runs after Express static, so asset requests wrote no request line (AC 21) |
 
+| 11. One tenant function for every policy (from the PR review; supersedes door 3's literal) | migration 0001: `create function app_tenant_id() returns uuid language sql stable as $$ select nullif(current_setting('app.tenant_id', true), '')::uuid $$;` and every policy is `using (tenant_id = app_tenant_id()) with check (tenant_id = app_tenant_id())` (`id` on `tenants`) | the `nullif` expression typed into each policy: the conventions taught it without `nullif`, so the next slice would copy the 22P02 trap |
+| 12. `bad_request` problem code (from the PR review; extends door 4) | `validation_error` only for 400; any other unhandled 4xx is `{"type":"bad_request","title":"Bad request","status":<4xx>}` | every non-404 4xx as `validation_error`: a 413 or, later, a 401 would tell the client to fix a form |
+| 13. Migration numbers only grow (from the PR review) | gate 4 also fails when a migration this branch adds is numbered at or below the highest on `main`, and the `main` ruleset requires branches to be up to date | gate 4 checking only existing files: two branches that both add `0002` pass, and dbmate records the second as applied without running it |
+
 - Nothing else in this change is hard to reverse. Dependencies are the ones the ADRs already chose.
 
 ## Criteria
@@ -163,6 +167,18 @@ The logging convention, proven by canaries.
 32. WHEN the image runs THEN its process SHALL run as a non-root user (uid ≠ 0), and the image SHALL contain no dev dependency
     - `node_modules/vitest` and `node_modules/@playwright/test` absent from the image
 33. WHEN a developer runs `docker compose up -d db`, `pnpm db:migrate`, `pnpm db:seed` and `pnpm dev` from a fresh clone with `.env` copied from `.env.example` THEN the page at the local `PORT` SHALL show "Olá do banco de dados!"
+
+### S6: Fixes from the pull request review (P1)
+
+Findings of the `the-judge` review on PR #19, approved by the owner on 2026-11-25 ("go with option 1 and fix all seven").
+
+**Acceptance Criteria**
+
+34. WHEN all migrations are applied THEN every RLS policy SHALL read the tenant only through `app_tenant_id()`, and `app_tenant_id()` SHALL return null both when the setting was never set and when it reads `''`
+35. IF a request fails with a 4xx other than 400 or 404 THEN the system SHALL answer problem `bad_request` with that status; malformed JSON SHALL stay `400 validation_error`
+    - body over 100 KB → `413 bad_request`; `{"name": …` without a closing brace → `400 validation_error`
+36. IF a pull request adds a migration numbered at or below the highest migration on `main` THEN the migrations gate SHALL fail
+    - `main` gained `0002_on_main.sql`, the branch adds `0002_on_branch.sql` → fails; the branch adds `0003_x.sql` → passes
 
 ## Out of scope
 

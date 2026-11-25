@@ -1,6 +1,7 @@
 /**
- * Error inspection that never reads or returns messages: messages from Drizzle and Postgres
- * repeat query parameters and row values, which can be patient data (D4, logging.md).
+ * Error inspection that never logs or returns messages: messages from Drizzle and Postgres repeat
+ * query parameters and row values, which can be patient data (D4, logging.md). The one message
+ * read is pg-pool's fixed connect-timeout text, compared for equality and never copied.
  */
 
 const CONNECTION_ERROR_CODES = new Set([

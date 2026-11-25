@@ -4,7 +4,7 @@ Why: [ADR 0001](../adr/0001-react-spa-with-json-api.md), [ADR 0002](../adr/0002-
 
 ## Shape
 
-- One Node process runs NestJS (Express platform). It serves the JSON API and, with `@nestjs/serve-static`, the Vite build, from the same origin.
+- One Node process runs NestJS (Express platform). It serves the JSON API and the Vite build from the same origin: `useStaticAssets` serves `/assets/`, and `SpaController`, registered last, answers any other `GET` with `index.html`.
 - Client: React, React Router, and TanStack Query in memory only. No persisters, no `localStorage` and no IndexedDB for API data (D4).
 - Contracts: Zod schemas in `src/shared/`. The server validates with a `ZodValidationPipe`, and the client uses the same schemas for forms. No `class-validator` DTOs.
 - Follow the paths Nest's docs show. Step off them only for a reason recorded in an ADR.
@@ -21,7 +21,7 @@ Why: [ADR 0001](../adr/0001-react-spa-with-json-api.md), [ADR 0002](../adr/0002-
 
 - Paths are the ones in each slice's contract. Client routes never reuse an API path, and any other `GET` falls back to `index.html`.
 - JSON is camelCase, the database is snake_case, and the pulled Drizzle schema maps between them.
-- Errors are RFC 9457 problem details with a stable `type` code, from one global exception filter. The server never sends UI text.
+- Errors are RFC 9457 problem details with a stable `type` code, from one global exception filter: `validation_error` (400), `bad_request` (any other unhandled 4xx), `not_found`, `service_unavailable`, `internal_error`. The server never sends UI text.
 - Patient data never goes in a path or query string, only in bodies (D4).
 - Mutations accept only `application/json`, and the session cookie is `SameSite=Lax` (together they block cross-site form posts).
 

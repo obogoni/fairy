@@ -46,6 +46,9 @@
 | C36 | `src/server/common/errors.int.test.ts` `errors: unknown routes answer 404 not_found` | yes |
 | C37 | `tests/repo/toolchain.test.ts` `toolchain pins Node 26 and pnpm` | yes |
 | C38 | `tests/e2e/hello.spec.ts` `shows the greeting` ([phone], [desktop]) | yes - appended after verification; the proof names the test |
+| C39 | `src/server/db/schema.int.test.ts` `schema: every policy reads the tenant through app_tenant_id`, `schema: app_tenant_id is null when no tenant or an empty tenant is set` | appended after the PR review; judged by the author, not this Verifier |
+| C40 | `src/server/common/errors.int.test.ts` `errors: other client errors answer bad_request, malformed JSON validation_error` | appended after the PR review; judged by the author, not this Verifier. Fails with the old mapping (checked) |
+| C41 | `tests/repo/migrations-gate.test.ts` `migrations gate fails when a new migration is not numbered above the base` | appended after the PR review; judged by the author, not this Verifier. Fails with the numbering rule disabled (checked) |
 
 ## Findings
 

@@ -53,6 +53,21 @@ describe('migrations-untouched gate', () => {
     expect(gate()).toBe(1);
   });
 
+  it('migrations gate fails when a new migration is not numbered above the base', () => {
+    // main moves on with its own 0002 after this branch started...
+    git('checkout', '-q', 'main');
+    writeFileSync(join(repo, 'db/migrations/0002_on_main.sql'), '-- migrate:up\nselect 5;\n');
+    git('add', '.');
+    git('commit', '-q', '-m', 'main adds 0002');
+    git('checkout', '-q', 'feature');
+    // ...and this branch, rebased onto it, still adds a 0002.
+    git('rebase', '-q', 'main');
+    writeFileSync(join(repo, 'db/migrations/0002_on_branch.sql'), '-- migrate:up\nselect 6;\n');
+    git('add', '.');
+    git('commit', '-q', '-m', 'branch adds 0002');
+    expect(gate()).toBe(1);
+  });
+
   it('migrations gate passes when a migration is added', () => {
     writeFileSync(join(repo, 'db/migrations/0002_second.sql'), '-- migrate:up\nselect 3;\n');
     git('add', '.');
