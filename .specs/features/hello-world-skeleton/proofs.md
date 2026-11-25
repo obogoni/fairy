@@ -1,9 +1,9 @@
 # hello-world-skeleton proofs
 
-**HEAD**: 44009d2
+**HEAD**: 76c0436
 **Tree**: clean
 **Shell**: /bin/sh
-**Result**: 47 pass, 0 fail
+**Result**: 51 pass, 0 fail
 
 | Check | Proof | Result |
 | --- | --- | --- |
@@ -54,23 +54,27 @@
 | C37 | `run unit / ✓ toolchain pins Node 26 and pnpm` | pass |
 | C38 | `run e2e / ✓ [phone] › e2e/hello.spec.ts › shows the greeting` | pass |
 | C38 | `run e2e / ✓ [desktop] › e2e/hello.spec.ts › shows the greeting` | pass |
+| C39 | `run int / ✓ schema: every policy reads the tenant through app_tenant_id` | pass |
+| C39 | `run int / ✓ schema: app_tenant_id is null when no tenant or an empty tenant is set` | pass |
+| C40 | `run int / ✓ errors: other client errors answer bad_request, malformed JSON validation_error` | pass |
+| C41 | `run unit / ✓ migrations gate fails when a new migration is not numbered above the base` | pass |
 
 ## Output
 
 `Run int` - exit 0
 
 ```
- ✓ |integration| src/server/features/health/health.int.test.ts > health > GET /health/live is ok without the database 357ms
- ✓ |integration| src/server/features/health/health.int.test.ts > health > GET /health/ready is ok when select 1 succeeds 83ms
- ✓ |integration| src/server/features/health/health.int.test.ts > health > GET /health/ready is 503 unavailable when the database is down 30ms
- ✓ |integration| src/server/db/schema.int.test.ts > schema > db:seed is idempotent 1399ms
- ✓ |integration| src/server/db/schema.int.test.ts > schema > schema sync gate > schema sync gate passes on the committed schema 1841ms
- ✓ |integration| src/server/db/schema.int.test.ts > schema > schema sync gate > schema sync gate fails on a stale generated schema 1157ms
+ ✓ |integration| src/server/logging/logging.int.test.ts > logging > logging: one request line of chosen fields per request 86ms
+ ✓ |integration| src/server/logging/logging.int.test.ts > logging > logging: no canary reaches the logs 58ms
+ ✓ |integration| src/server/logging/logging.int.test.ts > logging > logging: database errors keep only code, constraint and table 14ms
+ ✓ |integration| src/server/db/schema.int.test.ts > schema > db:seed is idempotent 1795ms
+ ✓ |integration| src/server/db/schema.int.test.ts > schema > schema sync gate > schema sync gate passes on the committed schema 1488ms
+ ✓ |integration| src/server/db/schema.int.test.ts > schema > schema sync gate > schema sync gate fails on a stale generated schema 1137ms
 
  Test Files  7 passed (7)
-      Tests  25 passed (25)
-   Start at  18:07:49
-   Duration  6.16s (import 63%, tests 35%, transform 2%)
+      Tests  28 passed (28)
+   Start at  08:20:38
+   Duration  6.08s (import 65%, tests 32%, transform 2%)
 
  Container fairy-db-1 Running 
  Container fairy-db-1 Waiting 
@@ -81,14 +85,14 @@
 
 ```
 
-  ✓  1 [phone] › tests/e2e/hello.spec.ts:3:1 › shows the greeting (487ms)
-  ✓  2 [desktop] › tests/e2e/hello.spec.ts:3:1 › shows the greeting (399ms)
-  ✓  3 [phone] › tests/e2e/hello.spec.ts:9:1 › shows Carregando while the greeting loads (295ms)
-  ✓  4 [desktop] › tests/e2e/hello.spec.ts:9:1 › shows Carregando while the greeting loads (332ms)
-  ✓  5 [phone] › tests/e2e/hello.spec.ts:25:1 › retries after an error (348ms)
-  ✓  6 [desktop] › tests/e2e/hello.spec.ts:25:1 › retries after an error (336ms)
+  ✓  1 [desktop] › tests/e2e/hello.spec.ts:3:1 › shows the greeting (375ms)
+  ✓  2 [phone] › tests/e2e/hello.spec.ts:3:1 › shows the greeting (345ms)
+  ✓  3 [desktop] › tests/e2e/hello.spec.ts:9:1 › shows Carregando while the greeting loads (260ms)
+  ✓  4 [phone] › tests/e2e/hello.spec.ts:9:1 › shows Carregando while the greeting loads (257ms)
+  ✓  5 [desktop] › tests/e2e/hello.spec.ts:25:1 › retries after an error (274ms)
+  ✓  6 [phone] › tests/e2e/hello.spec.ts:25:1 › retries after an error (312ms)
 
-  6 passed (3.8s)
+  6 passed (3.5s)
  Container fairy-db-1 Running 
  Container fairy-db-1 Waiting 
  Container fairy-db-1 Healthy 
@@ -100,21 +104,21 @@ $ nest build && vite build --config vite.config.mts
 `Run unit` - exit 0
 
 ```
- ✓ |unit| tests/repo/migrations-roles.test.ts > migrations create roles nologin and hold no password 9ms
+ ✓ |unit| tests/repo/ci-workflow.test.ts > ci workflow runs the eight gates on pull requests 6ms
  ✓ |unit| tests/repo/migrations-gate.test.ts > migrations-untouched gate > migrations gate fails when an existing migration is edited 81ms
- ✓ |unit| tests/repo/ci-workflow.test.ts > ci workflow runs the eight gates on pull requests 8ms
- ✓ |unit| src/server/config/config.test.ts > config > loadConfig accepts a valid environment 10ms
- ✓ |unit| src/server/config/config.test.ts > config > loadConfig names a missing DATABASE_URL 2ms
+ ✓ |unit| src/server/config/config.test.ts > config > loadConfig accepts a valid environment 16ms
+ ✓ |unit| src/server/config/config.test.ts > config > loadConfig names a missing DATABASE_URL 3ms
  ✓ |unit| src/server/config/config.test.ts > config > loadConfig names a malformed DEMO_TENANT_ID without its value 1ms
  ✓ |unit| src/server/config/config.test.ts > config > loadConfig never prints a malformed DATABASE_URL 1ms
- ✓ |unit| tests/repo/migrations-gate.test.ts > migrations-untouched gate > migrations gate fails when an existing migration is deleted 70ms
- ✓ |unit| tests/repo/migrations-gate.test.ts > migrations-untouched gate > migrations gate fails when an existing migration becomes a symlink 67ms
- ✓ |unit| tests/repo/migrations-gate.test.ts > migrations-untouched gate > migrations gate passes when a migration is added 59ms
+ ✓ |unit| tests/repo/migrations-gate.test.ts > migrations-untouched gate > migrations gate fails when an existing migration is deleted 82ms
+ ✓ |unit| tests/repo/migrations-gate.test.ts > migrations-untouched gate > migrations gate fails when an existing migration becomes a symlink 65ms
+ ✓ |unit| tests/repo/migrations-gate.test.ts > migrations-untouched gate > migrations gate fails when a new migration is not numbered above the base 85ms
+ ✓ |unit| tests/repo/migrations-gate.test.ts > migrations-untouched gate > migrations gate passes when a migration is added 52ms
 
  Test Files  5 passed (5)
-      Tests  11 passed (11)
-   Start at  18:08:04
-   Duration  518ms (import 45%, tests 41%, worker 7%, transform 7%)
+      Tests  12 passed (12)
+   Start at  08:20:52
+   Duration  594ms (tests 50%, import 38%, worker 7%, transform 5%)
 ```
 
 `scripts/test-image.sh bad-config` - exit 0
@@ -132,10 +136,10 @@ no-console rejects console calls in server code.
 `gh pr checks 19` - exit 0
 
 ```
-Build	pass	35s	https://github.com/obogoni/fairy/actions/runs/45487367921/job/138776585411	
-End to end, phone and desktop	pass	1m14s	https://github.com/obogoni/fairy/actions/runs/45487367921/job/138777140258	
-Install, format, lint, types, migrations	pass	34s	https://github.com/obogoni/fairy/actions/runs/45487367921/job/138776218327	
-Unit and integration tests, schema in sync	pass	51s	https://github.com/obogoni/fairy/actions/runs/45487367921/job/138776585508
+Build	pass	34s	https://github.com/obogoni/fairy/actions/runs/45603159249/job/139167406467	
+End to end, phone and desktop	pass	54s	https://github.com/obogoni/fairy/actions/runs/45603159249/job/139167820185	
+Install, format, lint, types, migrations	pass	38s	https://github.com/obogoni/fairy/actions/runs/45603159249/job/139167035733	
+Unit and integration tests, schema in sync	pass	44s	https://github.com/obogoni/fairy/actions/runs/45603159249/job/139167406511
 ```
 
 `scripts/test-image.sh serve` - exit 0
@@ -154,17 +158,17 @@ Image runs as uid 1000 and has no dev dependencies.
 
 ```
 Applying: 0001_tenants_and_greetings.sql
-Applied: 0001_tenants_and_greetings.sql in 6.244158ms
+Applied: 0001_tenants_and_greetings.sql in 6.901651ms
 Demo tenant seeded.
 Fresh clone shows the greeting.
- Network fairy-fresh-970190_default Creating 
- Network fairy-fresh-970190_default Created 
- Container fairy-fresh-970190-db-1 Creating 
- Container fairy-fresh-970190-db-1 Created 
- Container fairy-fresh-970190-db-1 Starting 
- Container fairy-fresh-970190-db-1 Started 
- Container fairy-fresh-970190-db-1 Waiting 
- Container fairy-fresh-970190-db-1 Healthy 
+ Network fairy-fresh-1846435_default Creating 
+ Network fairy-fresh-1846435_default Created 
+ Container fairy-fresh-1846435-db-1 Creating 
+ Container fairy-fresh-1846435-db-1 Created 
+ Container fairy-fresh-1846435-db-1 Starting 
+ Container fairy-fresh-1846435-db-1 Started 
+ Container fairy-fresh-1846435-db-1 Waiting 
+ Container fairy-fresh-1846435-db-1 Healthy 
 $ dbmate --env DATABASE_OWNER_URL --migrations-dir db/migrations --no-dump-schema --wait up --strict
 $ tsx scripts/seed-demo.mts
 ```
@@ -182,7 +186,7 @@ dist/client/index.html                   0.39 kB │ gzip:   0.26 kB
 dist/client/assets/index-cuj_S1Br.css    0.17 kB │ gzip:   0.14 kB
 dist/client/assets/index-dIpneuGp.js   332.87 kB │ gzip: 101.51 kB
 
-✓ built in 230ms
+✓ built in 278ms
 $ prettier --check .
 $ eslint .
 $ tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit && tsc -p tsconfig.tools.json --noEmit

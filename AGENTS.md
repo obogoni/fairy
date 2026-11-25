@@ -15,6 +15,7 @@ Fairy is a dentist business management app.
 - Before creating or triaging a ticket, read [docs/ai/tickets.md](docs/ai/tickets.md).
 - After implementation, once the Verifier finishes and all gates have passed, push the branch and open the PR without asking.
 - Use /pr for opening PRs.
+- Right after a PR is published, run /the-judge on it in a fresh subagent, which posts its review on the PR. Fix the findings, or answer them, and resolve every thread before merging.
 - A decision with real alternatives gets an ADR in [docs/adr/](docs/adr/README.md). The convention it shapes links the ADR.
 
 ## Conventions
