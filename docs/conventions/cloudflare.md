@@ -1,15 +1,18 @@
 # Cloudflare
 
-Why: [ADR 0011](../adr/0011-terraform-for-cloudflare.md), D4, D9.
+Why: [ADR 0011](../adr/0011-terraform-for-cloudflare.md), [ADR 0013](../adr/0013-personal-domain-for-now.md), D4, D9.
 
 ## Hostnames
 
-The domain is a `.com.br` with its DNS on Cloudflare (free plan).
+The domain is the owner's `obogoni.dev`, registered at Cloudflare Registrar (free plan), and shared with the owner's other sites.
 
 | Hostname | Goes to | Reachable by |
 |---|---|---|
-| `app.<domain>` | Tunnel → Caddy `127.0.0.1:8080` | everyone, through the proxy |
-| `ssh.<domain>` | Tunnel → `ssh://127.0.0.1:22` | Cloudflare Access only |
+| `fairy.obogoni.dev` | Tunnel → Caddy `127.0.0.1:8080` | everyone, through the proxy |
+| `fairy-ssh.obogoni.dev` | Tunnel → `ssh://127.0.0.1:22` | Cloudflare Access only |
+
+- Hostnames are first-level only (the free certificate doesn't cover `x.fairy.obogoni.dev`).
+- **Scope everything to Fairy's hostnames.** The zone also serves other sites: every rule matches `fairy.obogoni.dev` or `fairy-ssh.obogoni.dev`, and Terraform manages only Fairy's records and rules.
 
 ## Terraform
 
@@ -24,7 +27,7 @@ The domain is a `.com.br` with its DNS on Cloudflare (free plan).
 
 ## Cache (D4)
 
-- One cache rule: every path not under `/assets/` **bypasses the cache**.
+- One cache rule, on `fairy.obogoni.dev` only: every path not under `/assets/` **bypasses the cache**.
 - Browser cache TTL respects origin headers. The app's own `no-store` (framework.md) is an independent second guard.
 
 ## Client IP
@@ -34,11 +37,11 @@ The domain is a `.com.br` with its DNS on Cloudflare (free plan).
 
 ## Access
 
-- `ssh.<domain>` has two policies: the owner's identity, and CI's service token.
+- `fairy-ssh.obogoni.dev` has two policies: the owner's identity, and CI's service token.
 
 ## Zone settings
 
-- Always Use HTTPS, minimum TLS 1.2. HSTS only after HTTPS is proven (it's hard to undo).
+- Always Use HTTPS, minimum TLS 1.2, for the whole zone (`.dev` is HTTPS-only anyway). HSTS only after HTTPS is proven (it's hard to undo).
 - The free WAF managed ruleset is on.
-- The one free rate-limiting rule covers `/auth/*`.
+- The one free rate-limiting rule covers `fairy.obogoni.dev/auth/*`.
 - Web Analytics is off, and so is anything that rewrites HTML or JS.

@@ -24,6 +24,7 @@ Why: [ADR 0001](../adr/0001-react-spa-with-json-api.md), [ADR 0002](../adr/0002-
 - Errors are RFC 9457 problem details with a stable `type` code, from one global exception filter: `validation_error` (400), `bad_request` (any other unhandled 4xx), `not_found`, `service_unavailable`, `internal_error`. The server never sends UI text.
 - Patient data never goes in a path or query string, only in bodies (D4).
 - Mutations accept only `application/json`, and the session cookie is `SameSite=Lax` (together they block cross-site form posts).
+- The session cookie is host-only: never set its `Domain` attribute (the domain is shared with other sites, ADR 0013).
 
 ## Caching (D4)
 
