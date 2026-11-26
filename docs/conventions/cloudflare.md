@@ -12,7 +12,7 @@ The domain is the owner's `obogoni.dev`, registered at Cloudflare Registrar (fre
 | `fairy-ssh.obogoni.dev` | Tunnel → `ssh://127.0.0.1:22` | Cloudflare Access only |
 
 - Hostnames are first-level only (the free certificate doesn't cover `x.fairy.obogoni.dev`).
-- **Scope everything to Fairy's hostnames.** The zone also serves other sites: every rule matches `fairy.obogoni.dev` or `fairy-ssh.obogoni.dev`, and Terraform manages only Fairy's records and rules.
+- **Scope Fairy's configuration to its hostnames.** The zone also serves other sites: rules match `fairy.obogoni.dev` or `fairy-ssh.obogoni.dev` where Cloudflare allows it, and Terraform manages only Fairy's records and rules. The exception is rate limiting (below).
 
 ## Terraform
 
@@ -43,5 +43,5 @@ The domain is the owner's `obogoni.dev`, registered at Cloudflare Registrar (fre
 
 - Always Use HTTPS, minimum TLS 1.2, for the whole zone (`.dev` is HTTPS-only anyway). HSTS only after HTTPS is proven (it's hard to undo).
 - The free WAF managed ruleset is on.
-- The one free rate-limiting rule covers `fairy.obogoni.dev/auth/*`.
+- The one free rate-limiting rule matches the path `/auth/*` on the whole zone (Free rules can't match a hostname). Other sites on the zone never use `/auth/`.
 - Web Analytics is off, and so is anything that rewrites HTML or JS.

@@ -17,10 +17,10 @@ Cloudflare's free Universal SSL certificate covers the apex domain and first-lev
 
 - Fairy runs under the owner's personal domain `obogoni.dev`, registered at Cloudflare Registrar, so its DNS is on Cloudflare from the start.
 - Fairy's hostnames are first-level only: the app at `fairy.obogoni.dev`, SSH at `fairy-ssh.obogoni.dev`.
-- The zone is shared with the owner's other sites, so everything Fairy configures is scoped to its own hostnames:
+- The zone is shared with the owner's other sites, so Fairy's configuration is scoped to its own hostnames wherever Cloudflare allows it:
   - **Cache bypass (D4):** a cache rule on `fairy.obogoni.dev` only.
-  - **Rate limiting:** its rule matches only `fairy.obogoni.dev`.
-  - **Session cookie:** host-only, with no `Domain` attribute, so no sibling site can read it.
+  - **Rate limiting:** the exception. On the Free plan a rate-limiting rule can match the path but not the hostname ([rate limiting rules](https://developers.cloudflare.com/waf/rate-limiting-rules/), read 2026-11-26), so the one rule matches `/auth/*` on every site of the zone. The owner's other sites keep off `/auth/`. Per-route limits belong in the app (`@nestjs/throttler`, Tenant slice).
+  - **Session cookie:** named with the `__Host-` prefix, so the browser rejects it unless it is `Secure`, has `Path=/` and no `Domain`. No sibling site can read it.
   - **Terraform:** it manages only Fairy's records and rules, never the zone's other sites.
 
 ## Alternatives considered
@@ -32,7 +32,8 @@ Cloudflare's free Universal SSL certificate covers the apex domain and first-lev
 ## Consequences
 
 - Zone-wide settings (TLS minimum, Always Use HTTPS, the WAF managed ruleset) apply to the blog too. That's fine for a blog, but they're decided with both in mind.
-- The free plan's single rate-limiting rule is spent on Fairy's sign-in.
+- The free plan's single rate-limiting rule is spent on `/auth/*`, zone-wide by path.
+- Browsers treat every subdomain of `obogoni.dev` as the same site, so `SameSite=Lax` no longer stops requests that come from the owner's other sites. Against them, Fairy's guard is that mutations accept only `application/json` (framework.md), which a cross-site form can't send. A site on the zone that ever runs untrusted code is a risk to Fairy.
 - `.dev` is on the HSTS preload list, so every site on the domain must serve HTTPS, which Cloudflare does.
 - The public repo and the domain both carry the owner's name; the owner accepted that in ADR 0012.
 - When Fairy gets a commercial name, a new ADR moves it, and this one becomes superseded.

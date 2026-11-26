@@ -23,8 +23,8 @@ Why: [ADR 0001](../adr/0001-react-spa-with-json-api.md), [ADR 0002](../adr/0002-
 - JSON is camelCase, the database is snake_case, and the pulled Drizzle schema maps between them.
 - Errors are RFC 9457 problem details with a stable `type` code, from one global exception filter: `validation_error` (400), `bad_request` (any other unhandled 4xx), `not_found`, `service_unavailable`, `internal_error`. The server never sends UI text.
 - Patient data never goes in a path or query string, only in bodies (D4).
-- Mutations accept only `application/json`, and the session cookie is `SameSite=Lax` (together they block cross-site form posts).
-- The session cookie is host-only: never set its `Domain` attribute (the domain is shared with other sites, ADR 0013).
+- Mutations accept only `application/json` (a cross-site form can't send it). This is the guard that counts: the domain is shared with other sites, which browsers treat as the same site, so `SameSite=Lax` doesn't stop them (ADR 0013).
+- The session cookie is named with the `__Host-` prefix and set `Secure; HttpOnly; SameSite=Lax; Path=/` with no `Domain` (the browser refuses it otherwise, so no sibling site can read it).
 
 ## Caching (D4)
 
