@@ -1,15 +1,18 @@
 # Cloudflare
 
-Why: [ADR 0011](../adr/0011-terraform-for-cloudflare.md), D4, D9.
+Why: [ADR 0011](../adr/0011-terraform-for-cloudflare.md), [ADR 0013](../adr/0013-personal-domain-for-now.md), D4, D9.
 
 ## Hostnames
 
-The domain is a `.com.br` with its DNS on Cloudflare (free plan).
+The domain is the owner's `obogoni.dev`, registered at Cloudflare Registrar (free plan), and shared with the owner's other sites.
 
 | Hostname | Goes to | Reachable by |
 |---|---|---|
-| `app.<domain>` | Tunnel → Caddy `127.0.0.1:8080` | everyone, through the proxy |
-| `ssh.<domain>` | Tunnel → `ssh://127.0.0.1:22` | Cloudflare Access only |
+| `fairy.obogoni.dev` | Tunnel → Caddy `127.0.0.1:8080` | everyone, through the proxy |
+| `fairy-ssh.obogoni.dev` | Tunnel → `ssh://127.0.0.1:22` | Cloudflare Access only |
+
+- Hostnames are first-level only (the free certificate doesn't cover `x.fairy.obogoni.dev`).
+- **Scope Fairy's configuration to its hostnames.** The zone also serves other sites: rules match `fairy.obogoni.dev` or `fairy-ssh.obogoni.dev` where Cloudflare allows it, and Terraform manages only Fairy's records and rules. The exception is rate limiting (below).
 
 ## Terraform
 
@@ -24,7 +27,7 @@ The domain is a `.com.br` with its DNS on Cloudflare (free plan).
 
 ## Cache (D4)
 
-- One cache rule: every path not under `/assets/` **bypasses the cache**.
+- One cache rule, on `fairy.obogoni.dev` only: every path not under `/assets/` **bypasses the cache**.
 - Browser cache TTL respects origin headers. The app's own `no-store` (framework.md) is an independent second guard.
 
 ## Client IP
@@ -34,11 +37,11 @@ The domain is a `.com.br` with its DNS on Cloudflare (free plan).
 
 ## Access
 
-- `ssh.<domain>` has two policies: the owner's identity, and CI's service token.
+- `fairy-ssh.obogoni.dev` has two policies: the owner's identity, and CI's service token.
 
 ## Zone settings
 
-- Always Use HTTPS, minimum TLS 1.2. HSTS only after HTTPS is proven (it's hard to undo).
+- Always Use HTTPS, minimum TLS 1.2, for the whole zone (`.dev` is HTTPS-only anyway). HSTS only after HTTPS is proven (it's hard to undo).
 - The free WAF managed ruleset is on.
-- The one free rate-limiting rule covers `/auth/*`.
+- The one free rate-limiting rule matches the path `/auth/*` on the whole zone (Free rules can't match a hostname). Other sites on the zone never use `/auth/`.
 - Web Analytics is off, and so is anything that rewrites HTML or JS.

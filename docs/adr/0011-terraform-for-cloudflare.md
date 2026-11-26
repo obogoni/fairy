@@ -1,6 +1,6 @@
 # 0011. Terraform for Cloudflare
 
-- **Status:** Accepted
+- **Status:** Accepted; the domain choice is superseded by [0013](0013-personal-domain-for-now.md)
 - **Date:** 2026-11-23
 - **Decided by:** obogoni (project owner), in spike #2
 - **Builds on:** D4, D9, ADR 0007
